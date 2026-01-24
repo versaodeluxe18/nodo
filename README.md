@@ -10,5 +10,5 @@
 🔗 **Use online:** https://versaodeluxe18.github.io/nodo/
 
 Created by **W.F.Fukuta**  
-A **Versão Deluxe Dev**
+A **Versão Deluxe**
 
