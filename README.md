@@ -1,6 +1,6 @@
-# NÓDO
+# NÓ-DO
 
-**NÓDO** é uma ferramenta visual para mapear arquitetura e registrar decisões de desenvolvimento (dev log) em projetos indie.
+**NÓDO** é uma ferramenta visual para mapear arquitetura e registrar decisões de desenvolvimento em projetos indie.
 
 - Web app single-file
 - Funciona online e offline
