@@ -1,0 +1,17 @@
+{
+  "version": "1.1",
+  "nodes": [
+    {
+      "id": 1769694178583.2893,
+      "x": 590,
+      "y": 230,
+      "label": "VERSÃO",
+      "type": "txt",
+      "description": "🚀 V:1.0",
+      "code": "~~INFORMAÇÕES DESSA VERSÃO~~\n\n- NOVIDADES:\n- Essa é a primeira versão de Nó-do, portanto tudo é novidade e estamos constantemente \nmelhorando o nosso projeto.\n\n"
+    }
+  ],
+  "connections": [],
+  "devLogs": [],
+  "novelos": []
+}
