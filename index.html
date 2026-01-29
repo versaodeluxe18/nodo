@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>NÓ-DO</title>
+    <style>
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #1e1e1e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ccc;
+        }
+
+        /* Barra de Ferramentas Superior */
+        #toolbar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #252526;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #1177bb; }
+        
+        button.secondary { background: #3c3c3c; }
+        button.secondary:hover { background: #4c4c4c; }
+
+        button.success { background: #3c3c3c; }
+        button.success:hover { background: #4c4c4c; }
+
+        button.warning { background: #3c3c3c; color: #fff; }
+        button.warning:hover { background: #4c4c4c; }
+
+        /* Separador visual na toolbar */
+        .separator {
+            width: 1px;
+            height: 25px;
+            background: #555;
+            margin: 0 5px;
+        }
+
+        /* O Canvas Principal */
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+
+        /* Painel Lateral de Código */
+        #code-panel {
+            position: absolute;
+            top: 0;
+            right: -550px; /* Escondido inicialmente */
+            width: 500px;
+            height: 100vh;
+            background: #252526;
+            border-left: 1px solid #333;
+            transition: right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1);
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        #code-panel.active { right: 0; }
+
+        .panel-header {
+            padding: 15px;
+            background: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e1e1e;
+        }
+
+        .panel-header h3 { margin: 0; color: #fff; font-size: 16px; }
+
+        #code-editor {
+            flex: 1;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 15px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .close-btn {
+            background: transparent;
+            color: #fff;
+            font-size: 20px;
+            padding: 0 10px;
+        }
+        .close-btn:hover { background: #444; }
+        
+        .instruction {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #666;
+            font-size: 12px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+                
+#file-type {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: 1px solid #3c3c3c;
+    padding: 6px 8px;
+    margin: 10px;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    font-size: 13px;
+    outline: none;
+}
+
+#file-type option {
+    background: #1e1e1e;
+    color: #d4d4d4;
+}
+
+    </style>
+
+
+<!-- Google Identity Services (LOGIN) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<!-- Google API (Drive Picker) -->
+<script src="https://apis.google.com/js/api.js"></script>
+
+    
+</head>
+<body>
+
+    <div id="toolbar">
+        <button onclick="addNode()">+ NOVO CARTÃO</button>
+        <button class="secondary" onclick="connectNodes()">LIGAR</button>
+        <button class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
+
+        
+        <div class="separator"></div>
+
+        <button class="success" onclick="exportProject()">💾</button>
+        <button id="openBtn" class="warning">📂</button>
+        </div>
+
+
+        <!-- MENU SUSPENSO DE ABERTURA -->
+        <div id="openMenu" style="
+  position:absolute;
+  top:55px;
+  left:10px;
+  background:#252526;
+  border:1px solid #333;
+  border-radius:4px;
+  display:none;
+  flex-direction:column;
+  min-width:220px;
+  z-index:100;
+  box-shadow:0 6px 20px rgba(0,0,0,.4);
+">
+  <button class="secondary" onclick="openLocalFile()">📂 Arquivo local</button>          
+  <button class="secondary" onclick="openFromGithub()">🔗 GitHub (RAW)</button>
+  <button class="secondary" onclick="openFromDrive()">☁️ Google Drive</button>          
+  <button class="secondary" onclick="openProjetoNodo()">🚀 Projeto Nó-do</button>
+</div>
+
+
+    
+
+    <input type="file" id="fileInput" style="display: none;" accept=".json" onchange="importProject(this)">
+
+    <div class="instruction">
+        Versão DEluxe | W.F.Fukuta | V: 1.0
+    </div>
+
+    <canvas id="gameMap"></canvas>
+
+  <div id="code-panel">
+
+  <div class="panel-header">
+      <h3 id="panel-title">Editor</h3>
+      <button class="close-btn" onclick="closePanel()">×</button>          
+  </div>
+
+
+
+
+      
+
+  <!-- TIPO DE ARQUIVO -->
+  <select id="file-type" onchange="changeFileType(this.value)">
+      <option value="js">js</option>
+      <option value="html">html</option>
+      <option value="css">css</option>
+      <option value="json">json</option>
+      <option value="txt">txt</option>
+  </select>
+
+  <!-- DESCRIÇÃO FIXA -->
+  <textarea
+      id="description-editor"
+      placeholder="Descrição do arquivo (aparece no card)..."
+      style="
+        margin: 0 10px 10px 10px;
+        height: 70px;
+        background: #1e1e1e;
+        color: #ccc;
+        border: 1px solid #333;
+        padding: 8px;
+        resize: none;
+        font-size: 13px;
+        outline: none;
+      "
+  ></textarea>
+
+  <!-- CÓDIGO -->
+  <textarea id="code-editor" placeholder="// Escreva seu código aqui..."></textarea>
+
+</div>
+
+
+
+
+
+
+    
+    <script> 
+        /* ===========================
+   GOOGLE DRIVE CONFIG
+=========================== */
+const GOOGLE_CLIENT_ID = "521418524116-tignj0vd8higq6tvidh750d5n1b9gsfi.apps.googleusercontent.com";
+const GOOGLE_API_KEY = ""; // pode ficar vazio
+let googleAccessToken = null;
+        
+        const canvas = document.getElementById('gameMap');
+        const ctx = canvas.getContext('2d');
+        canvas.addEventListener("contextmenu", e => e.preventDefault());
+        const codePanel = document.getElementById('code-panel');
+        const codeEditor = document.getElementById('code-editor');
+        const panelTitle = document.getElementById('panel-title');
+
+        // Estado da Aplicação
+        // Alterado de 'let' para 'var' para garantir escopo global no window
+        var nodes = [];
+        var connections = [];
+        var novelos = []; // <--- AGORA GLOBAL DE VERDADE
+        var devLogs = []; // <--- GLOBAL PARA LOGS
+        var selectedNodes = [];
+        
+        let isPanning = false;
+        let isDragging = false;
+let dragTarget = null;
+let offsetX = 0;
+let offsetY = 0;
+
+let panStartX = 0;
+let panStartY = 0;
+
+        let activeNode = null; // Nó sendo editado no painel
+
+        // Configuração do Canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Classe Nó (Representa um arquivo)
+      class Node {
+    constructor(x, y, label, type = 'js', id = null) {
+        this.id = id || (Date.now() + Math.random());
+        this.x = x;
+        this.y = y;
+        this.width = 160;
+        this.height = 95;
+
+        this.label = label;
+        this.type = type;
+        this.description = '';
+        this.color = '#3c3c3c';
+
+        this.code = `// Código para ${label}\n`;
+    }
+
+
+            draw(ctx, isSelected) {
+                // Sombra para profundidade
+                ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                ctx.shadowBlur = 15;
+                
+                // Fundo do Nó
+                ctx.fillStyle = isSelected ? '#094771' : this.color; // Azul mais escuro quando selecionado
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Borda
+                ctx.strokeStyle = isSelected ? '#007acc' : '#555'; // Borda azul VSCode quando selecionado
+                ctx.lineWidth = isSelected ? 2 : 1;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+                
+                ctx.shadowBlur = 0; // Reset sombra
+
+                // Cabeçalho (Barra superior do nó)
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fillRect(this.x, this.y, this.width, 25);
+
+                // Texto do Título
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 13px Segoe UI';
+                ctx.fillText(`${this.label}.${this.type}`, this.x + 10, this.y + 17);
+
+
+
+                // Indicador de conteúdo
+                ctx.fillStyle = '#888';
+                ctx.fillStyle = '#aaa';
+ctx.font = '11px Segoe UI';
+
+ctx.fillStyle = '#aaa';
+ctx.font = '11px Segoe UI';
+
+const desc = this.description || 'Sem descrição';
+
+drawMultilineText(
+    ctx,
+    desc,
+    this.x + 10,
+    this.y + 45,
+    this.width - 20,
+    14,
+    3
+);
+
+            }
+
+            isPointInside(x, y) {
+                return x >= this.x && x <= this.x + this.width &&
+                       y >= this.y && y <= this.y + this.height;
+            }
+        }
+
+        // --- FUNCIONALIDADES DE ARQUIVO (EXPORTAR/IMPORTAR) ---
+
+        function exportProject() {
+            if (nodes.length === 0) {
+                alert("Nada para salvar!");
+                return;
+            }
+
+            // Criar objeto de dados Serializável
+            // Convertemos as conexões de referências de objetos para IDs
+            const projectData = {
+                version: "1.0",
+               nodes: nodes.map(n => ({
+    id: n.id,
+    x: n.x,
+    y: n.y,
+    label: n.label,
+    type: n.type,
+    description: n.description,
+    code: n.code
+})),
+connections: connections.map(c => ({
+    from: c.from.id,
+    to: c.to.id
+})),
+                novelos: novelos // Inclui os novelos no export original
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "arquitetura_jogo.json");
+            document.body.appendChild(downloadAnchorNode); // Necessário para Firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+
+        function importProject(inputElement) {
+            const file = inputElement.files[0];
+            if (!file) return;
+
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    loadProjectData(data);
+                    alert("Projeto carregado com sucesso!");
+
+                } catch (err) {
+                    alert("Erro ao carregar arquivo: Formato inválido.");
+                    console.error(err);
+                }
+                // Limpar o input para permitir carregar o mesmo arquivo novamente se necessário
+                inputElement.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+
+        function loadProjectData(data) {
+  nodes.length = 0;
+  connections.length = 0;
+  selectedNodes.length = 0;
+
+  // Restaurar nodes
+  data.nodes.forEach(n => {
+    const node = new Node(n.x, n.y, n.label, n.type, n.id);
+    node.description = n.description || "";
+    node.code = n.code || "";
+    
+    // Propriedades de Novelo
+    if (n.isNovelo) {
+        node.isNovelo = true;
+        node.noveloId = n.noveloId;
+    }
+    
+    nodes.push(node);
+  });
+
+  // Restaurar conexões
+  data.connections.forEach(c => {
+    const from = nodes.find(n => n.id === c.from);
+    const to = nodes.find(n => n.id === c.to);
+    if (from && to) connections.push({ from, to });
+  });
+
+  // Restaurar DevLogs
+  if (data.devLogs) {
+    devLogs = data.devLogs;
+  } else {
+    devLogs = [];
+  }
+  
+  // Restaurar Novelos
+  if (data.novelos) {
+    novelos = data.novelos;
+  } else {
+    novelos = [];
+  }
+
+  // Atualizar UI de novelos se disponível
+  if (window.renderNovelos) window.renderNovelos();
+  // Atualizar UI de logs se disponível
+  if (window.renderDevLogs) window.renderDevLogs();
+
+  draw();
+}
+
+        // --- GERENCIAMENTO DE NÓS ---
+
+        function addNode() {
+            const name = prompt("Nome do novo cartão", "NewSystem");
+            if (name) {
+                // Posiciona levemente deslocado para não ficar um em cima do outro
+                const offset = nodes.length * 20;
+                const node = new Node(100 + offset, 100 + offset, name);
+                nodes.push(node);
+                draw();
+            }
+        }
+
+        function connectNodes() {
+            if (selectedNodes.length === 2) {
+                const exists = connections.some(c => 
+                    (c.from === selectedNodes[0] && c.to === selectedNodes[1]) ||
+                    (c.from === selectedNodes[1] && c.to === selectedNodes[0])
+                );
+                
+                if (!exists) {
+                    connections.push({ from: selectedNodes[0], to: selectedNodes[1] });
+                }
+                clearSelection();
+                draw();
+            } else {
+                alert("Selecione exatamente 2 cartões para ligar o nó. (Shift + Clique).");
+            }
+        }
+
+
+        function unlinkSelectedNodes() {
+    if (selectedNodes.length === 2) {
+        connections = connections.filter(c =>
+            !(
+                (c.from === selectedNodes[0] && c.to === selectedNodes[1]) ||
+                (c.from === selectedNodes[1] && c.to === selectedNodes[0])
+            )
+        );
+        clearSelection();
+        draw();
+    } else {
+        alert("Selecione exatamente 2 cartões para desligar o nó.");
+    }
+}
+
+
+function hasConnection(a, b) {
+  return connections.some(c =>
+    (c.from === a && c.to === b) ||
+    (c.from === b && c.to === a)
+  );
+}
+
+function toggleConnection(a, b) {
+  if (hasConnection(a, b)) {
+    // ===== DESLIGAR =====
+    connections = connections.filter(c =>
+      !(
+        (c.from === a && c.to === b) ||
+        (c.from === b && c.to === a)
+      )
+    );
+
+    // feedback visual de remoção
+    playLinkEffect(a, b, "unlink");
+
+  } else {
+    // ===== LIGAR =====
+    connections.push({ from: a, to: b });
+
+    // feedback visual de criação
+    playLinkEffect(a, b, "link");
+  }
+}
+        
+
+        function clearSelection() {
+            selectedNodes = [];
+            closePanel(); // Fecha o painel de edição também, para dar feedback visual claro
+            draw();
+        }
+
+
+        function deleteSelectedNodes() {
+  if (selectedNodes.length === 0) return;
+
+  // Remove conexões ligadas aos nós selecionados
+  connections = connections.filter(c =>
+    !selectedNodes.includes(c.from) &&
+    !selectedNodes.includes(c.to)
+  );
+
+  // Remove os nós
+  nodes = nodes.filter(n => !selectedNodes.includes(n));
+
+  // Limpa seleção e painel
+  selectedNodes = [];
+  closePanel();
+
+  draw();
+}
+
+
+        function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+    const words = text.split(' ');
+    let line = '';
+    let lines = [];
+
+    for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+
+        if (metrics.width > maxWidth && n > 0) {
+            lines.push(line);
+            line = words[n] + ' ';
+        } else {
+            line = testLine;
+        }
+    }
+    lines.push(line);
+
+    if (lines.length > maxLines) {
+        lines = lines.slice(0, maxLines);
+        lines[maxLines - 1] = lines[maxLines - 1].trim() + '…';
+    }
+
+    lines.forEach((l, i) => {
+        ctx.fillText(l, x, y + i * lineHeight);
+    });
+}
+
+
+        // --- RENDERIZAÇÃO ---
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            // Desenhar Conexões
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            connections.forEach(conn => {
+                const startX = conn.from.x + conn.from.width / 2;
+                const startY = conn.from.y + conn.from.height / 2;
+                const endX = conn.to.x + conn.to.width / 2;
+                const endY = conn.to.y + conn.to.height / 2;
+
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                // Curva suave
+                const cp1x = startX + (endX - startX) / 2;
+                const cp1y = startY;
+                const cp2x = startX + (endX - startX) / 2;
+                const cp2y = endY;
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+                ctx.stroke();
+            });
+
+            // Desenhar Nós
+            nodes.forEach(node => {
+                const isSelected = selectedNodes.includes(node);
+                node.draw(ctx, isSelected);
+            });
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#2e2e2e';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            
+            ctx.beginPath();
+            for(let x=0; x<canvas.width; x+=gridSize) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+            }
+            for(let y=0; y<canvas.height; y+=gridSize) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+            }
+            ctx.stroke();
+        }
+
+        // --- INTERAÇÃO (MOUSE) ---
+
+       canvas.addEventListener('mousedown', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    dragTarget = null;
+
+    // Verifica se clicou em algum nó (de cima pra baixo)
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        if (nodes[i].isPointInside(mouseX, mouseY)) {
+            dragTarget = nodes[i];
+            break;
+        }
+    }
+
+if (e.button === 2) {
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
+
+  const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
+  if (!target) return;
+
+  if (selectedNodes.length !== 1) return;
+
+  const baseNode = selectedNodes[0];
+  if (baseNode === target) return;
+
+  toggleConnection(baseNode, target);
+  draw();
+  return;
+}
+
+    if (dragTarget) {
+        // ===== MOVE NÓ =====
+        isDragging = true;
+        offsetX = mouseX - dragTarget.x;
+        offsetY = mouseY - dragTarget.y;
+
+        if (e.shiftKey) {
+            if (selectedNodes.includes(dragTarget)) {
+                selectedNodes = selectedNodes.filter(n => n !== dragTarget);
+            } else {
+                selectedNodes.push(dragTarget);
+            }
+        } else {
+            if (!selectedNodes.includes(dragTarget)) {
+                selectedNodes = [dragTarget];
+                if (activeNode && activeNode !== dragTarget) {
+                    openCodePanel(dragTarget);
+                }
+            }
+        }
+
+        // traz para frente
+        const index = nodes.indexOf(dragTarget);
+        if (index > -1) {
+            nodes.splice(index, 1);
+            nodes.push(dragTarget);
+        }
+
+        draw();
+    } else {
+        // ===== MOVE FUNDO =====
+        isPanning = true;
+        panStartX = mouseX;
+        panStartY = mouseY;
+
+        if (!e.shiftKey) {
+            clearSelection();
+        }
+    }
+});
+
+       canvas.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    // ===== PAN DO FUNDO =====
+    if (isPanning) {
+        const dx = mouseX - panStartX;
+        const dy = mouseY - panStartY;
+
+        nodes.forEach(node => {
+            node.x += dx;
+            node.y += dy;
+        });
+
+        panStartX = mouseX;
+        panStartY = mouseY;
+
+        draw();
+        return;
+    }
+
+    // ===== MOVE NÓ =====
+    if (isDragging && dragTarget) {
+        if (selectedNodes.includes(dragTarget) && selectedNodes.length > 1) {
+            const deltaX = mouseX - (dragTarget.x + offsetX);
+            const deltaY = mouseY - (dragTarget.y + offsetY);
+
+            selectedNodes.forEach(node => {
+                node.x += deltaX;
+                node.y += deltaY;
+            });
+
+            offsetX = mouseX - dragTarget.x;
+            offsetY = mouseY - dragTarget.y;
+        } else {
+            dragTarget.x = mouseX - offsetX;
+            dragTarget.y = mouseY - offsetY;
+        }
+
+        draw();
+    }
+});
+
+
+        canvas.addEventListener('mouseup', () => {
+    isDragging = false;
+    isPanning = false;
+    dragTarget = null;
+});
+
+
+
+        
+   canvas.addEventListener('dblclick', (e) => {
+  const mouseX = e.clientX;
+  const mouseY = e.clientY;
+
+  const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
+  if (!target) return;
+
+  // SE FOR NOVELO → ABRE PAINEL DE NOVELOS
+  if (target.isNovelo) {
+    const panel = document.getElementById("novelo-panel");
+    panel.style.right = "0px";
+    return;
+  }
+
+  // SE FOR CARD NORMAL → ABRE EDITOR
+  openCodePanel(target);
+});
+
+
+
+
+
+
+canvas.addEventListener("click", (e) => {
+  if (isDragging || isPanning) return;
+  if (activeNovelo) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  const target = nodes.find(n => n.isPointInside(mx, my));
+  if (!target) {
+    removeEnterNoveloButton();
+    return;
+  }
+
+  // CARD DE NOVELO → MOSTRA BOTÃO
+  if (target.isNovelo) {
+    showEnterNoveloButton(target.noveloId);
+    return;
+  }
+
+  // CARD NORMAL → esconde botão
+  removeEnterNoveloButton();
+});
+
+
+
+
+        
+
+
+        window.addEventListener("keydown", e => {
+  if (e.key === "Delete") {
+    // evita apagar enquanto digita no editor
+    if (document.activeElement === codeEditor) return;
+
+    deleteSelectedNodes();
+  }
+});
+       
+        
+        const openBtn = document.getElementById("openBtn");
+const openMenu = document.getElementById("openMenu");
+
+openBtn.onclick = () => {
+  const rect = openBtn.getBoundingClientRect();
+
+  openMenu.style.top = rect.bottom + 5 + "px";
+  openMenu.style.left = rect.left + "px";
+
+  openMenu.style.display =
+    openMenu.style.display === "flex" ? "none" : "flex";
+};
+
+document.addEventListener("click", e => {
+  if (!openBtn.contains(e.target) && !openMenu.contains(e.target)) {
+    openMenu.style.display = "none";
+  }
+});
+
+
+
+        
+
+        // --- PAINEL DE CÓDIGO ---
+
+     function openCodePanel(node) {
+    activeNode = node;
+    updatePanelTitle();
+    codeEditor.value = node.code;
+    document.getElementById('description-editor').value = node.description || '';
+    document.getElementById('file-type').value = node.type;
+    codePanel.classList.add('active');
+}
+
+
+        function updatePanelTitle() {
+    if (!activeNode) return;
+    panelTitle.innerText = `${activeNode.label}.${activeNode.type}`;
+}
+     
+
+
+        function changeFileType(type) {
+    if (!activeNode) return;
+
+    activeNode.type = type;
+    updatePanelTitle();
+}
+
+
+        function closePanel() {
+    codePanel.classList.remove('active');
+
+    if (activeNode) {
+        activeNode.code = codeEditor.value;
+    }
+
+    activeNode = null;
+    document.getElementById('file-type').value = 'js';
+    codeEditor.blur();
+}
+        
+        codeEditor.addEventListener('input', (e) => {
+            if (activeNode) {
+                activeNode.code = e.target.value;
+            }
+        });
+
+
+        const descriptionEditor = document.getElementById('description-editor');
+
+descriptionEditor.addEventListener('input', e => {
+    if (activeNode) {
+        activeNode.description = e.target.value;
+        draw(); // atualiza o texto do card em tempo real
+    }
+});
+
+        // Inicialização
+        resizeCanvas();
+        
+        // Exemplo inicial se vazio
+        if(nodes.length === 0) {
+            const n1 = new Node(375, 161,"LEIA / README", "txt");
+            n1.description = "🙋🏻‍♂️ Bem-Vindo, amigo!";
+            n1.code = ` ~~INSTRUÇÕES PRA USAR O NÓ-DO~~\n\n🖱️ CLIQUE DUPLO: abrir cartão\n🖱️ CLIQUE DIREITO: liga ou desliga nó \n🖱️ SHIFT: selecionar vários\n🖱️ ARRASTAR: mover o mapa\n🖱️ DELETE: apaga cartão\n__________\n📂 ABRIR: Abrir um projeto\n💾 SALVAR: Salvar o projeto\n📝 DEVLOG: Registrar o fluxo\n🧶 NOVELO: Criar novo mapa
+__________            
+⌨️ CTRL+Z: Desfazer ações
+        `;
+            const n2 = new Node(777, 272, "VERSÃO", "txt");
+            n2.description = "🚀 V:1.0";
+            n2.code = `~~INFORMAÇÕES DESSA VERSÃO~~\n\n- NOVIDADES:\n- Essa é a primeira versão de Nó-do, portanto tudo é novidade e estamos constantemente \nmelhorando o nosso projeto.\n\n`;
+            nodes.push(n1, n2);
+            connections.push({from: n1, to: n2});
+            draw();
+        }
+
+
+
+        function openLocalFile() {
+  openMenu.style.display = "none";
+  document.getElementById("fileInputشنبه").click();
+}
+
+// Correção no ID do input no HTML estava fileInput
+function openLocalFile() {
+    openMenu.style.display = "none";
+    document.getElementById("fileInput").click();
+}
+
+async function openFromGithub() {
+  openMenu.style.display = "none";
+
+  const url = prompt("Cole o link RAW do JSON do GitHub:");
+  if (!url) return;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Erro ao baixar arquivo");
+
+    const data = await res.json();
+    loadProjectData(data);
+  } catch (err) {
+    alert("Erro ao abrir projeto do GitHub");
+    console.error(err);
+  }
+}
+
+function openFromDrive() {
+  openMenu.style.display = "none";
+
+  google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/drive.readonly",
+    callback: (tokenResponse) => {
+      googleAccessToken = tokenResponse.access_token;
+      loadDrivePicker();
+    }
+  }).requestAccessToken();
+}
+
+
+
+        function loadDrivePicker() {
+  gapi.load("picker", () => {
+    const picker = new google.picker.PickerBuilder()
+      .addView(google.picker.ViewId.DOCS)
+      .setOAuthToken(googleAccessToken)
+      .setDeveloperKey(GOOGLE_API_KEY)
+      .setCallback(pickerCallback)
+      .build();
+
+    picker.setVisible(true);
+  });
+}
+
+function pickerCallback(data) {
+  if (data.action === google.picker.Action.PICKED) {
+    const fileId = data.docs[0].id;
+    downloadDriveFile(fileId);
+  }
+}
+
+async function downloadDriveFile(fileId) {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    {
+      headers: {
+        Authorization: `Bearer ${googleAccessToken}`
+      }
+    }
+  );
+
+  const data = await res.json();
+  loadProjectData(data);
+}
+
+
+
+// ABRIR O NODE DO NODE
+        async function openProjetoNodo() {
+  openMenu.style.display = "none";
+
+  const NODO_JSON_URL = "https://raw.githubusercontent.com/SEU_USUARIO/SEU_REPOSITORIO/main/projeto-nodo.json";
+
+  try {
+    const res = await fetch(NODO_JSON_URL);
+    if (!res.ok) throw new Error("Erro ao carregar Projeto Nó-do");
+
+    const data = await res.json();
+    loadProjectData(data);
+
+  } catch (err) {
+    alert("Não foi possível carregar o Projeto Nó-do 🚧");
+    console.error(err);
+  }
+}
+    </script>
+
+
+
+
+
+    
+<script>
+/* ================================
+   DEV LOG — EXTENSÃO DO IDEOGRAMA
+================================ */
+
+(function () {
+
+  /* ---------- ESTADO ---------- */
+  // Removemos let devLogs = [] local para usar o global var devLogs
+  // let devLogs = [];
+
+  /* ---------- BOTÃO NA TOOLBAR ---------- */
+  const toolbar = document.getElementById("toolbar");
+
+  const devBtn = document.createElement("button");
+  devBtn.textContent = "📝";
+  devBtn.className = "secondary";
+  devBtn.style.marginLeft = "auto";
+  devBtn.onclick = toggleDevLog;
+
+  toolbar.appendChild(devBtn);
+
+  /* ---------- PAINEL ---------- */
+  const panel = document.createElement("div");
+  panel.id = "devlog-panel";
+  panel.style.cssText = `
+    position:absolute;
+    top:0;
+    right:-420px;
+    width:400px;
+    height:100vh;
+    background:#252526;
+    border-left:1px solid #333;
+    display:flex;
+    flex-direction:column;
+    transition:right .3s ease;
+    z-index:30;
+    box-shadow:-5px 0 15px rgba(0,0,0,.5);
+  `;
+
+  panel.innerHTML = `
+    <div style="padding:15px;background:#333;display:flex;justify-content:space-between;align-items:center;">
+      <strong>DEV LOG</strong>
+      <button style="background:none;color:#fff;font-size:20px;" onclick="document.getElementById('devlog-panel').style.right='-420px'">×</button>
+    </div>
+
+    <div style="padding:10px;display:flex;gap:8px;">
+      <select id="devlog-type" style="
+        flex:1;
+        background:#1e1e1e;
+        color:#d4d4d4;
+        border:1px solid #3c3c3c;
+        padding:4px;
+      ">
+        <option value="manutenção">Manutenção</option>
+        <option value="problema">Problema</option>
+        <option value="atualização">Atualização</option>
+      </select>
+      <button
+  id="devlog-save"
+  class="success"
+  style="background:#0e639c;"
+  onmouseover="this.style.background='#1177bb'"
+  onmouseout="this.style.background='#0e639c'"
+>
+  GRAVAR
+</button>
+    </div>
+
+    <textarea id="devlog-text" placeholder="O que foi feito no projeto?"
+      style="margin:10px;height:90px;background:#1e1e1e;color:#ccc;border:none;padding:8px;"></textarea>
+
+    <div id="devlog-history" style="flex:1;overflow:auto;padding:10px;font-size:12px;"></div>
+  `;
+
+  document.body.appendChild(panel);
+
+  /* ---------- FUNÇÕES ---------- */
+  window.renderDevLogs = function() {
+      renderHistory();
+  }
+
+  function toggleDevLog() {
+    panel.style.right = panel.style.right === "0px" ? "-420px" : "0px";
+    renderHistory();
+  }
+
+  function saveLog() {
+    const text = document.getElementById("devlog-text").value.trim();
+    if (!text) return;
+
+    const type = document.getElementById("devlog-type").value;
+    const now = new Date();
+
+    devLogs.unshift({
+      date: now.toLocaleDateString(),
+      time: now.toLocaleTimeString(),
+      type,
+      text
+    });
+
+    document.getElementById("devlog-text").value = "";
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const box = document.getElementById("devlog-history");
+
+    const colors = {
+      "atualização": "#2da042", 
+      "problema": "#f85149",    
+      "manutenção": "#d29922"  
+    };
+
+    box.innerHTML = devLogs.map(log => {
+      const color = colors[log.type] || "#0e639c";
+
+      return `
+        <div style="
+          margin-bottom:10px;
+          border-left:4px solid ${color};
+          padding-left:8px;
+        ">
+          <div style="color:${color};font-weight:bold;">
+            ${log.date} ${log.time} — ${log.type}
+          </div>
+          <div style="color:#ccc;">
+            ${log.text}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("devlog-save").onclick = saveLog;
+
+  /* ---------- INTEGRAÇÃO COM EXPORT / IMPORT ---------- */
+
+  // Substituindo as funções globais para garantir que usem as variáveis 'var' corretamente.
+  window.exportProject = function () {
+    if (nodes.length === 0) return alert("Nada para salvar!");
+
+    const projectData = {
+      version: "1.1",
+      nodes: nodes.map(n => ({
+        id: n.id,
+        x: n.x,
+        y: n.y,
+        label: n.label,
+        type: n.type,
+        description: n.description,
+        code: n.code,
+        // Persistir propriedades de novelo
+        isNovelo: n.isNovelo,
+        noveloId: n.noveloId
+      })),
+      connections: connections.map(c => ({
+        from: c.from.id,
+        to: c.to.id
+      })),
+      devLogs: devLogs,
+      // Persistir array global de novelos (Agora acessível via window.novelos ou var novelos)
+      novelos: window.novelos || novelos
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(projectData, null, 2));
+
+    const a = document.createElement("a");
+    a.href = dataStr;
+    a.download = "arquitetura_jogo.json";
+    a.click();
+  };
+
+  window.importProject = function (input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+          const data = JSON.parse(e.target.result);
+          // Chama a função centralizada que limpa e popula as variáveis globais
+          loadProjectData(data);
+          renderHistory();
+      } catch(err) {
+          console.error(err);
+          alert("Erro ao importar arquivo.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+})();
+</script>
+
+
+
+
+
+
+
+
+    
+<script>
+/* =================================================
+   FEEDBACK VISUAL
+================================================= */
+
+(function () {
+
+  const effects = [];
+
+  window.playLinkEffect = function (from, to, type = "link") {
+    effects.push({ from, to, type, t: 0 });
+  };
+
+  function easeOutBack(t) {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  }
+
+  function drawEffects(ctx) {
+    for (let i = effects.length - 1; i >= 0; i--) {
+      const e = effects[i];
+      e.t += 0.05;
+
+      if (e.t >= 1) {
+        effects.splice(i, 1);
+        continue;
+      }
+
+      const x1 = e.from.x + e.from.width / 2;
+      const y1 = e.from.y + e.from.height / 2;
+      const x2 = e.to.x + e.to.width / 2;
+      const y2 = e.to.y + e.to.height / 2;
+
+      ctx.save();
+
+      if (e.type === "link") {
+        /* ===== NOVO LINK SNAP ===== */
+
+        const t = easeOutBack(e.t);
+
+        // Linha principal (aparece rápido)
+        ctx.strokeStyle = `rgba(0, 180, 255, ${1 - e.t})`;
+        ctx.lineWidth = 5;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#00b4ff";
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(
+          x1 + (x2 - x1) * Math.min(t, 1),
+          y1 + (y2 - y1) * Math.min(t, 1)
+        );
+        ctx.stroke();
+
+        // Flash de fixação nos nós
+        if (e.t > 0.4) {
+          const pulse = (1 - e.t) * 12;
+
+          ctx.strokeStyle = `rgba(0,180,255,${1 - e.t})`;
+          ctx.lineWidth = 2;
+
+          ctx.beginPath();
+          ctx.arc(x1, y1, pulse, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(x2, y2, pulse, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+      } else {
+        /* ===== REMOÇÃO (MANTIDA) ===== */
+
+        const t = e.t;
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+
+        ctx.strokeStyle = `rgba(255, 80, 80, ${1 - t})`;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 8]);
+
+        ctx.beginPath();
+        ctx.moveTo(
+          x1 + (cx - x1) * t,
+          y1 + (cy - y1) * t
+        );
+        ctx.lineTo(
+          x2 + (cx - x2) * t,
+          y2 + (cy - y2) * t
+        );
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = `rgba(255,80,80,${1 - t})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10 * (1 - t), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+  }
+
+  const originalDraw = window.draw;
+  window.draw = function () {
+    originalDraw();
+    drawEffects(ctx);
+    if (effects.length) requestAnimationFrame(draw);
+  };
+
+})();
+</script>
+
+
+
+
+
+
+
+
+ <script>
+/* ==========================================
+   NOVELO — SISTEMA DE CENAS / MAPAS
+========================================== */
+
+(function () {
+
+  /* ---------- ESTADO ---------- */
+  // let novelos = []; // REMOVIDO: Usar variável global 'novelos' definida no script principal (agora var novelos)
+  let activeNovelo = null;
+  let mainMapBackup = null;
+
+  /* ---------- BOTÃO TOOLBAR ---------- */
+  const toolbar = document.getElementById("toolbar");
+
+  const noveloBtn = document.createElement("button");
+  noveloBtn.textContent = "🧶";
+  noveloBtn.className = "secondary";
+  noveloBtn.onclick = toggleNoveloPanel;
+
+  toolbar.appendChild(noveloBtn);
+
+  /* ---------- PAINEL DE NOVELOS ---------- */
+  const panel = document.createElement("div");
+  panel.id = "novelo-panel";
+  panel.style.cssText = `
+    position:absolute;
+    top:0;
+    right:-420px;
+    width:400px;
+    height:100vh;
+    background:#252526;
+    border-left:1px solid #333;
+    display:flex;
+    flex-direction:column;
+    transition:right .3s ease;
+    z-index:40;
+    box-shadow:-5px 0 15px rgba(0,0,0,.5);
+  `;
+
+  panel.innerHTML = `
+    <div style="padding:15px;background:#333;display:flex;justify-content:space-between;">
+      <strong>🧶 NOVELOS</strong>
+      <button style="background:none;color:#fff;font-size:20px;"
+        onclick="document.getElementById('novelo-panel').style.right='-420px'">×</button>
+    </div>
+
+    <div style="padding:10px;">
+      <input id="novelo-name" placeholder="Nome do novelo"
+        style="width:100%;margin-bottom:6px;background:#1e1e1e;color:#ccc;border:1px solid #333;padding:6px">
+      <textarea id="novelo-desc" placeholder="Descrição"
+        style="width:100%;height:60px;background:#1e1e1e;color:#ccc;border:1px solid #333;padding:6px"></textarea>
+      <button
+  id="novelo-create"
+  class="success"
+  style="width:100%;margin-top:6px;background:#0e639c;"
+  onmouseover="this.style.background='#1177bb'"
+  onmouseout="this.style.background='#0e639c'"
+>
+  CRIAR
+</button>
+
+    </div>
+
+    <div id="novelo-list" style="flex:1;overflow:auto;padding:10px;font-size:13px;"></div>
+  `;
+
+  document.body.appendChild(panel);
+
+  /* ---------- FUNÇÕES ---------- */
+  function toggleNoveloPanel() {
+    panel.style.right = panel.style.right === "0px" ? "-420px" : "0px";
+    renderNovelos();
+  }
+
+  function renderNovelos() {
+    const box = document.getElementById("novelo-list");
+
+    // Usa a variável global 'novelos' (agora segura pois é var)
+    box.innerHTML = (window.novelos || novelos).map(n => `
+      <div style="border:1px solid #333;padding:8px;margin-bottom:8px;">
+        <strong>🧶 ${n.name}</strong>
+        <div style="font-size:11px;color:#aaa;">${n.description}</div>
+        <div style="margin-top:6px;display:flex;gap:6px;">
+          <button onclick="insertNovelo('${n.id}')">INSERIR NO MAPA</button>
+          <button class="secondary" onclick="openNovelo('${n.id}')">Abrir</button>
+          <button class="warning" onclick="deleteNovelo('${n.id}')">Excluir</button>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  // Expõe a função para ser chamada pelo importProject do DevLog
+  window.renderNovelos = renderNovelos;
+
+  document.getElementById("novelo-create").onclick = () => {
+    if (activeNovelo) {
+      alert("Não é possível criar novelo dentro de outro novelo.");
+      return;
+    }
+
+    const name = document.getElementById("novelo-name").value.trim();
+    if (!name) return;
+
+    // Adiciona ao global
+    (window.novelos || novelos).push({
+      id: Date.now().toString(),
+      name,
+      description: document.getElementById("novelo-desc").value,
+      nodes: [],
+      connections: []
+    });
+
+    document.getElementById("novelo-name").value = "";
+    document.getElementById("novelo-desc").value = "";
+    renderNovelos();
+  };
+
+  /* ---------- INSERIR CARD ---------- */
+  window.insertNovelo = function (id) {
+    const n = (window.novelos || novelos).find(n => n.id === id);
+    if (!n) return;
+
+    const card = new Node(
+      canvas.width / 2 - 80,
+      canvas.height / 2 - 50,
+      `🧶 ${n.name}`,
+      "novelo"
+    );
+
+    card.isNovelo = true;
+    card.noveloId = id;
+
+    nodes.push(card);
+    draw();
+  };
+
+  /* ---------- DESENROLAR ---------- */
+  window.openNovelo = function (id) {
+    const n = (window.novelos || novelos).find(n => n.id === id);
+    if (!n) return;
+
+    if (!mainMapBackup) {
+      mainMapBackup = {
+  nodes: nodes.map(n => ({
+    id: n.id,
+    x: n.x,
+    y: n.y,
+    label: n.label,
+    type: n.type,
+    description: n.description,
+    code: n.code,
+    isNovelo: n.isNovelo || false,
+    noveloId: n.noveloId || null
+  })),
+  connections: connections.map(c => ({
+    from: c.from.id,
+    to: c.to.id
+  }))
+};
+
+    }
+
+    nodes.length = 0;
+    connections.length = 0;
+
+    n.nodes.forEach(d => {
+      const node = new Node(d.x, d.y, d.label, d.type, d.id);
+      node.description = d.description;
+      node.code = d.code;
+      nodes.push(node);
+    });
+
+    n.connections.forEach(c => {
+      const from = nodes.find(n => n.id === c.from);
+      const to = nodes.find(n => n.id === c.to);
+      if (from && to) connections.push({ from, to });
+    });
+
+    activeNovelo = n;
+    showExitButton();
+    draw();
+  };
+
+  /* ---------- SAIR ---------- */
+  function showExitButton() {
+    if (document.getElementById("novelo-exit")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "novelo-exit";
+    btn.textContent = "❌ SAIR DO NOVELO";
+    btn.style.cssText = `
+      position:absolute;
+      bottom:50px;
+      left:20px;
+      background:#b42318;
+      color:#fff;
+      padding:12px 18px;
+      border:none;
+      border-radius:6px;
+      z-index:50;
+    `;
+    btn.onclick = exitNovelo;
+
+    document.body.appendChild(btn);
+  }
+
+  function exitNovelo() {
+    activeNovelo.nodes = nodes.map(n => ({
+      id: n.id,
+      x: n.x,
+      y: n.y,
+      label: n.label,
+      type: n.type,
+      description: n.description,
+      code: n.code
+    }));
+
+    activeNovelo.connections = connections.map(c => ({
+      from: c.from.id,
+      to: c.to.id
+    }));
+
+    nodes.length = 0;
+    connections.length = 0;
+
+    mainMapBackup.nodes.forEach(d => {
+  const node = new Node(d.x, d.y, d.label, d.type, d.id);
+  node.description = d.description;
+  node.code = d.code;
+
+  // 🔑 RESTAURA IDENTIDADE DE NOVELO
+  if (d.isNovelo) {
+    node.isNovelo = true;
+    node.noveloId = d.noveloId;
+  }
+
+  nodes.push(node);
+});
+
+
+    mainMapBackup.connections.forEach(c => {
+      const from = nodes.find(n => n.id === c.from);
+      const to = nodes.find(n => n.id === c.to);
+      if (from && to) connections.push({ from, to });
+    });
+
+    mainMapBackup = null;
+    activeNovelo = null;
+
+    document.getElementById("novelo-exit").remove();
+    draw();
+  }
+
+  /* ---------- EXCLUIR ---------- */
+  window.deleteNovelo = function (id) {
+    if (activeNovelo && activeNovelo.id === id) {
+      alert("Feche o novelo antes de excluir.");
+      return;
+    }
+
+    // Atualiza a global novelos
+    if (window.novelos) {
+        window.novelos = window.novelos.filter(n => n.id !== id);
+        // Sincroniza referência local se necessário, embora não deva ser pois usamos a global
+    }
+    
+    // Também remove nós que referenciam este novelo
+    nodes = nodes.filter(n => n.noveloId !== id);
+    
+    renderNovelos();
+    draw();
+  };
+
+})();
+</script>
+
+
+    
+
+<script>
+/* ===============================================
+   UNDO — CTRL + Z 
+================================================ */
+
+(function() {
+
+  // ----- ESTADO GLOBAL DO UNDO -----
+  const undoStack = [];
+  // Variáveis para capturar estado de movimento
+  let moveSnapshot = null;
+
+  // Registra uma ação na pilha
+  function registerAction(action) {
+    // action = { type, description, undoFunc }
+    undoStack.push(action);
+    // Limita o tamanho da pilha se necessário (opcional, ex: 50 ações)
+    if (undoStack.length > 50) undoStack.shift();
+  }
+
+  // Mostra janela de desfazer
+  function showUndoDialog() {
+    if (undoStack.length === 0) {
+      alert("Nenhuma ação para desfazer.");
+      return;
+    }
+
+    // Remove overlay anterior se existir
+    const oldOverlay = document.getElementById("undo-overlay");
+    if (oldOverlay) oldOverlay.remove();
+
+    // Criar overlay
+    const overlay = document.createElement("div");
+    overlay.id = "undo-overlay";
+    overlay.style.cssText = `
+      position:fixed;
+      top:0; left:0; right:0; bottom:0;
+      background:rgba(0,0,0,0.6);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      z-index:9999;
+    `;
+
+    // Criar painel
+    const panel = document.createElement("div");
+    panel.style.cssText = `
+      background:#252526;
+      padding:20px;
+      border-radius:8px;
+      width:400px;
+      max-height:80%;
+      overflow:auto;
+      color:#ccc;
+      font-family:'Segoe UI',sans-serif;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 1px solid #444;
+    `;
+
+    const title = document.createElement("h3");
+    title.innerText = "Histórico de Ações";
+    title.style.marginTop = "0";
+    title.style.color = "#fff";
+    title.style.borderBottom = "1px solid #333";
+    title.style.paddingBottom = "10px";
+    panel.appendChild(title);
+
+    const list = document.createElement("ul");
+    list.style.listStyle = "none";
+    list.style.padding = "0";
+    list.style.margin = "10px 0";
+
+    // Renderiza a lista (Do mais recente para o mais antigo)
+    // Usamos clone da array para não afetar a original no reverse
+    [...undoStack].reverse().forEach((action, idx) => {
+      const li = document.createElement("li");
+      li.style.padding = "8px 5px";
+      li.style.borderBottom = "1px solid #333";
+      li.style.fontSize = "13px";
+      li.style.color = idx === 0 ? "#fff" : "#999"; // Destaque para o último
+      li.innerText = `${action.type} ${action.description ? '— ' + action.description : ''}`;
+      list.appendChild(li);
+    });
+
+    panel.appendChild(list);
+
+    // Botões
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.style.display = "flex";
+    buttonsDiv.style.justifyContent = "flex-end";
+    buttonsDiv.style.gap = "10px";
+    buttonsDiv.style.marginTop = "15px";
+
+    const undoBtn = document.createElement("button");
+    undoBtn.innerText = "↩ Desfazer Última";
+    undoBtn.style.background = "#b42318";
+    undoBtn.style.color = "#fff";
+    undoBtn.style.padding = "8px 14px";
+    undoBtn.style.border = "none";
+    undoBtn.style.borderRadius = "4px";
+    undoBtn.style.cursor = "pointer";
+    undoBtn.style.fontWeight = "bold";
+    
+    undoBtn.onclick = () => {
+      const action = undoStack.pop();
+      if (action && typeof action.undoFunc === "function") {
+        action.undoFunc();
+        
+        // Remove o item da lista visualmente
+        if (list.firstChild) list.removeChild(list.firstChild);
+        
+        // Feedback visual
+        draw(); 
+        
+        // Fecha se acabar
+        if (undoStack.length === 0) {
+          overlay.remove();
+        }
+      }
+    };
+
+    const closeBtn = document.createElement("button");
+    closeBtn.innerText = "Fechar";
+    closeBtn.style.background = "#3c3c3c";
+    closeBtn.style.color = "#fff";
+    closeBtn.style.padding = "8px 14px";
+    closeBtn.style.border = "none";
+    closeBtn.style.borderRadius = "4px";
+    closeBtn.style.cursor = "pointer";
+    closeBtn.onclick = () => {
+      overlay.remove();
+    };
+
+    buttonsDiv.appendChild(undoBtn);
+    buttonsDiv.appendChild(closeBtn);
+    panel.appendChild(buttonsDiv);
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
+
+  // ----- INTEGRAÇÃO (WRAPPERS) -----
+
+  // 1. Adicionar Nó
+  const originalAddNode = window.addNode;
+  window.addNode = function(...args) {
+    const initialLength = nodes.length;
+    originalAddNode(...args);
+    
+    // Verifica se realmente adicionou (usuário pode ter cancelado o prompt)
+    if (nodes.length > initialLength) {
+      const addedNode = nodes[nodes.length - 1];
+      registerAction({
+        type: "Adicionar nó",
+        description: addedNode.label,
+        undoFunc: () => {
+          // Remove o nó adicionado
+          const idx = nodes.indexOf(addedNode);
+          if (idx > -1) nodes.splice(idx, 1);
+          draw();
+        }
+      });
+    }
+  };
+
+  // 2. Deletar Nós (CORRIGIDO: Usa referências reais para preservar conexões)
+  const originalDeleteSelectedNodes = window.deleteSelectedNodes;
+  window.deleteSelectedNodes = function(...args) {
+    if (selectedNodes.length === 0) return;
+
+    // Guarda REFERÊNCIAS aos objetos originais, não cópias
+    const nodesToSave = [...selectedNodes];
+    
+    // Guarda conexões que envolvem estes nós antes que sejam destruídas
+    const connectionsToSave = connections.filter(c =>
+      nodesToSave.includes(c.from) || nodesToSave.includes(c.to)
+    );
+
+    originalDeleteSelectedNodes(...args);
+
+    registerAction({
+      type: "Excluir nó(s)",
+      description: nodesToSave.map(n => n.label).join(", "),
+      undoFunc: () => {
+        // Restaura os nós originais para o array global
+        nodes.push(...nodesToSave);
+        
+        // Restaura as conexões (que ainda apontam para os objetos restaurados)
+        connections.push(...connectionsToSave);
+        
+        draw();
+      }
+    });
+  };
+
+  // 3. Conectar Nós
+  const originalConnectNodes = window.connectNodes;
+  window.connectNodes = function(...args) {
+    const countBefore = connections.length;
+    originalConnectNodes(...args);
+    
+    // Se houve adição
+    if (connections.length > countBefore) {
+      const newConn = connections[connections.length - 1];
+      registerAction({
+        type: "Conectar nós",
+        description: `${newConn.from.label} → ${newConn.to.label}`,
+        undoFunc: () => {
+          // Remove especificamente esta conexão
+          const idx = connections.indexOf(newConn);
+          if (idx > -1) connections.splice(idx, 1);
+          draw();
+        }
+      });
+    }
+  };
+
+  // 4. Desconectar (Unlink)
+  const originalUnlinkSelectedNodes = window.unlinkSelectedNodes;
+  window.unlinkSelectedNodes = function(...args) {
+    // Identifica quais links serão removidos (entre os selecionados)
+    const linksToRemove = connections.filter(c =>
+      (selectedNodes.includes(c.from) && selectedNodes.includes(c.to)) ||
+      (selectedNodes.includes(c.to) && selectedNodes.includes(c.from))
+    );
+
+    if (linksToRemove.length === 0) {
+        originalUnlinkSelectedNodes(...args);
+        return;
+    }
+
+    originalUnlinkSelectedNodes(...args);
+
+    registerAction({
+      type: "Desconectar nós",
+      description: `${linksToRemove.length} ligação(ões)`,
+      undoFunc: () => {
+        connections.push(...linksToRemove);
+        draw();
+      }
+    });
+  };
+
+  // 5. Movimento (CORRIGIDO: Snapshot no mousedown para evitar race condition)
+  // O evento mousedown deste script roda APÓS o do script principal (se inserido depois),
+  // portanto 'dragTarget' e 'selectedNodes' já estarão configurados pelo main.
+  
+  canvas.addEventListener("mousedown", (e) => {
+      // Se o script principal detectou um alvo para arrastar
+      if (dragTarget) {
+          // Determina quais nós estão sendo movidos
+          // Lógica do main: se dragTarget está na seleção (e >1), move todos. Senão, move só ele.
+          if (selectedNodes.includes(dragTarget) && selectedNodes.length > 1) {
+              moveSnapshot = selectedNodes.map(n => ({ node: n, startX: n.x, startY: n.y }));
+          } else {
+              moveSnapshot = [{ node: dragTarget, startX: dragTarget.x, startY: dragTarget.y }];
+          }
+      } else {
+          moveSnapshot = null;
+      }
+  });
+
+  canvas.addEventListener("mouseup", () => {
+      if (moveSnapshot) {
+          // Verifica se houve deslocamento real em algum nó
+          const hasMoved = moveSnapshot.some(item => 
+              item.node.x !== item.startX || item.node.y !== item.startY
+          );
+
+          if (hasMoved) {
+              // Cria closure com os dados do snapshot atual
+              const recordedSnapshot = [...moveSnapshot];
+              
+              registerAction({
+                  type: "Mover nó(s)",
+                  description: recordedSnapshot.length > 1 ? "Vários nós" : recordedSnapshot[0].node.label,
+                  undoFunc: () => {
+                      // Restaura posição de todos os nós envolvidos
+                      recordedSnapshot.forEach(item => {
+                          item.node.x = item.startX;
+                          item.node.y = item.startY;
+                      });
+                      draw();
+                  }
+              });
+          }
+          // Limpa snapshot
+          moveSnapshot = null;
+      }
+  });
+
+
+  // ----- HOTKEY CTRL + Z -----
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      showUndoDialog();
+    }
+  });
+
+})();
+</script>
+
+
+
+
+
+    
+
+<script>
+/* =========================================================
+   AUTONOMOUS SAVE STATE MONITOR
+   ========================================================= */
+(function () {
+
+  /* 1. LOCALIZAR O BOTÃO DE SALVAR (Incluindo Emoji 💾) */
+  function findSaveButton() {
+    const buttons = document.querySelectorAll('button, a');
+    for (const el of buttons) {
+      const text = (el.innerText || '').toLowerCase();
+      const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+      // Correção: Adicionado check para o emoji '💾' usado no HTML
+      if (
+        text.includes('salv') ||
+        text.includes('save') ||
+        text.includes('💾') || 
+        aria.includes('salv') ||
+        aria.includes('save')
+      ) {
+        return el;
+      }
+    }
+    return null;
+  }
+
+  const saveBtn = findSaveButton();
+  if (!saveBtn) {
+    console.warn('[SaveMonitor] Botão salvar não encontrado.');
+    return;
+  }
+
+  /* 2. ESTILOS VISUAIS (Mantidos) */
+  const style = document.createElement('style');
+  style.innerHTML = `
+    .save-layout-pending {
+      background-color: #f1c40f !important; /* Amarelo: Layout */
+      color: #000 !important;
+    }
+    .save-structure-pending {
+      background-color: #2ecc71 !important; /* Verde: Estrutura/Dados */
+      color: #000 !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  let state = null; // null | layout | structure
+
+  function reset() {
+    state = null;
+    saveBtn.classList.remove('save-layout-pending', 'save-structure-pending');
+  }
+
+  function markLayout() {
+    if (state === 'structure') return; // Estrutura tem prioridade
+    state = 'layout';
+    saveBtn.classList.add('save-layout-pending');
+  }
+
+  function markStructure() {
+    state = 'structure';
+    saveBtn.classList.remove('save-layout-pending');
+    saveBtn.classList.add('save-structure-pending');
+  }
+
+  /* 3. INTERCEPTAÇÃO DE FUNÇÕES (Mecanismo Principal) 
+     Como é um app Canvas, MutationObserver não funciona bem.
+     Interceptamos as funções globais que alteram o estado. */
+
+  const actions = [
+    'addNode', 
+    'deleteSelectedNodes', 
+    'connectNodes', 
+    'unlinkSelectedNodes', 
+    'toggleConnection'
+  ];
+
+  actions.forEach(fnName => {
+    if (typeof window[fnName] === 'function') {
+      const original = window[fnName];
+      window[fnName] = function (...args) {
+        const result = original.apply(this, args);
+        markStructure(); // Marca como alterado
+        return result;
+      };
+    }
+  });
+
+  /* 4. MONITORAMENTO DE INPUTS (Editor de Código/Descrição) */
+  document.addEventListener('input', (e) => {
+    if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) {
+       // Ignora input de arquivo
+       if (e.target.type === 'file') return;
+       markStructure();
+    }
+  });
+
+  /* 5. MONITORAMENTO DE CANVAS (Mudanças de Posição/Layout) */
+  const canvas = document.getElementById('gameMap') || document.querySelector('canvas');
+  if (canvas) {
+    let startX = 0, startY = 0;
+    canvas.addEventListener('mousedown', (e) => {
+      startX = e.clientX;
+      startY = e.clientY;
+    });
+    canvas.addEventListener('mouseup', (e) => {
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+      // Se moveu mais que 5 pixels, considera alteração de layout
+      if (dx > 5 || dy > 5) {
+        markLayout();
+      }
+    });
+  }
+
+  /* 6. RESETAR AO SALVAR/CARREGAR */
+  
+  // Wrapper para Salvar
+  if (typeof window.exportProject === 'function') {
+    const origExport = window.exportProject;
+    window.exportProject = function (...args) {
+      origExport.apply(this, args);
+      setTimeout(reset, 200); // Reseta visualmente após ação
+    };
+  }
+
+  // Wrapper para Carregar (Importar)
+  if (typeof window.loadProjectData === 'function') {
+    const origLoad = window.loadProjectData;
+    window.loadProjectData = function (...args) {
+      origLoad.apply(this, args);
+      reset();
+    };
+  }
+
+  // Tecla Delete/Backspace detectada globalmente
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+       // Pequeno delay para garantir que algo foi deletado
+       setTimeout(markStructure, 50);
+    }
+  });
+
+})();
+</script>
+
+
+
+
+    
+</body>
+</html>
