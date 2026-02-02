@@ -1,13 +1,14 @@
-# NÓ-DO
+# [NÓ]~[DO]
 
-**NÓDO** é uma ferramenta visual para mapear arquitetura e registrar decisões de desenvolvimento em projetos indie.
+O NÓDO é uma ferramenta open-source para arquitetura de sistemas, escrita não-linear e organização de ideias. Tudo em um único arquivo HTML.
 
 - Web app single-file
-- Funciona online e offline
+- DevLog Integrado
 - Não requer instalação
 - Código aberto
 
 🔗 **Use online:** https://versaodeluxe18.github.io/nodo/
+🌐 **Site:** https://sites.google.com/view/no-do
 
 Created by **W.F.Fukuta**  
 A **Versão Deluxe**
