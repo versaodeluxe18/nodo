@@ -146,12 +146,6 @@
     </style>
 
 
-<!-- Google Identity Services (LOGIN) -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-
-<!-- Google API (Drive Picker) -->
-<script src="https://apis.google.com/js/api.js"></script>
-
     
 </head>
 <body>
@@ -184,8 +178,7 @@
   box-shadow:0 6px 20px rgba(0,0,0,.4);
 ">
   <button class="secondary" onclick="openLocalFile()">📂 Arquivo local</button>          
-  <button class="secondary" onclick="openFromGithub()">🔗 GitHub (RAW)</button>
-  <button class="secondary" onclick="openFromDrive()">☁️ Google Drive</button>          
+  <button class="secondary" onclick="openFromGithub()">🔗 GitHub (RAW)</button>         
   <button class="secondary" onclick="openProjetoNodo()">🚀 Projeto Nó-do</button>
 </div>
 
@@ -250,13 +243,6 @@
 
     
     <script> 
-        /* ===========================
-   GOOGLE DRIVE CONFIG
-=========================== */
-const GOOGLE_CLIENT_ID = "521418524116-tignj0vd8higq6tvidh750d5n1b9gsfi.apps.googleusercontent.com";
-const GOOGLE_API_KEY = ""; // pode ficar vazio
-let googleAccessToken = null;
-        
         const canvas = document.getElementById('gameMap');
         const ctx = canvas.getContext('2d');
         canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -975,57 +961,6 @@ async function openFromGithub() {
     console.error(err);
   }
 }
-
-function openFromDrive() {
-  openMenu.style.display = "none";
-
-  google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/drive.readonly",
-    callback: (tokenResponse) => {
-      googleAccessToken = tokenResponse.access_token;
-      loadDrivePicker();
-    }
-  }).requestAccessToken();
-}
-
-
-
-        function loadDrivePicker() {
-  gapi.load("picker", () => {
-    const picker = new google.picker.PickerBuilder()
-      .addView(google.picker.ViewId.DOCS)
-      .setOAuthToken(googleAccessToken)
-      .setDeveloperKey(GOOGLE_API_KEY)
-      .setCallback(pickerCallback)
-      .build();
-
-    picker.setVisible(true);
-  });
-}
-
-function pickerCallback(data) {
-  if (data.action === google.picker.Action.PICKED) {
-    const fileId = data.docs[0].id;
-    downloadDriveFile(fileId);
-  }
-}
-
-async function downloadDriveFile(fileId) {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    {
-      headers: {
-        Authorization: `Bearer ${googleAccessToken}`
-      }
-    }
-  );
-
-  const data = await res.json();
-  loadProjectData(data);
-}
-
-
 
 // ABRIR O NODE DO NODE
         async function openProjetoNodo() {
