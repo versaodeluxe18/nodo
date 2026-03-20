@@ -1018,7 +1018,7 @@ if (e.button === 2) {
 
 canvas.addEventListener("click", (e) => {
   if (isDragging || isPanning) return;
-  if (activeNovelo) return;
+  if (window.isNoveloActive && window.isNoveloActive()) return;
 
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
@@ -1546,6 +1546,74 @@ async function openFromGithub() {
   // let novelos = []; // REMOVIDO: Usar variável global 'novelos' definida no script principal (agora var novelos)
   let activeNovelo = null;
   let mainMapBackup = null;
+  let selectedNoveloId = null;
+
+  /* ---------- AÇÕES DO NOVELO ---------- */
+  const actionBar = document.createElement("div");
+  actionBar.id = "novelo-actions";
+  actionBar.style.cssText = `
+    position:absolute;
+    bottom:50px;
+    left:20px;
+    display:none;
+    flex-direction:column;
+    gap:10px;
+    z-index:50;
+  `;
+
+  const enterBtn = document.createElement("button");
+  enterBtn.id = "novelo-enter";
+  enterBtn.textContent = "🧶 DESENROLAR NOVELO";
+  enterBtn.style.cssText = `
+    display:none;
+    background:#0e639c;
+    color:#fff;
+    padding:12px 18px;
+    border:none;
+    border-radius:6px;
+  `;
+  enterBtn.onclick = () => {
+    if (!selectedNoveloId) return;
+    window.openNovelo(selectedNoveloId);
+  };
+
+  const exitBtn = document.createElement("button");
+  exitBtn.id = "novelo-exit";
+  exitBtn.textContent = "❌ SAIR DO NOVELO";
+  exitBtn.style.cssText = `
+    display:none;
+    background:#b42318;
+    color:#fff;
+    padding:12px 18px;
+    border:none;
+    border-radius:6px;
+  `;
+
+  actionBar.appendChild(enterBtn);
+  actionBar.appendChild(exitBtn);
+  document.body.appendChild(actionBar);
+
+  function updateActionBarVisibility() {
+    const shouldShow = activeNovelo || selectedNoveloId;
+    actionBar.style.display = shouldShow ? "flex" : "none";
+    enterBtn.style.display = !activeNovelo && selectedNoveloId ? "block" : "none";
+    exitBtn.style.display = activeNovelo ? "block" : "none";
+  }
+
+  window.showEnterNoveloButton = function (id) {
+    const novelo = (window.novelos || novelos).find(n => n.id === id);
+    selectedNoveloId = novelo ? id : null;
+    updateActionBarVisibility();
+  };
+
+  window.removeEnterNoveloButton = function () {
+    selectedNoveloId = null;
+    updateActionBarVisibility();
+  };
+
+  window.isNoveloActive = function () {
+    return !!activeNovelo;
+  };
 
   /* ---------- BOTÃO TOOLBAR ---------- */
   const toolbar = document.getElementById("toolbar");
@@ -1675,7 +1743,10 @@ async function openFromGithub() {
   /* ---------- DESENROLAR ---------- */
   window.openNovelo = function (id) {
     const n = (window.novelos || novelos).find(n => n.id === id);
-    if (!n) return;
+    if (!n) {
+      window.removeEnterNoveloButton();
+      return;
+    }
 
     if (!mainMapBackup) {
       mainMapBackup = {
@@ -1715,31 +1786,15 @@ async function openFromGithub() {
     });
 
     activeNovelo = n;
+    selectedNoveloId = null;
     showExitButton();
     draw();
   };
 
   /* ---------- SAIR ---------- */
   function showExitButton() {
-    if (document.getElementById("novelo-exit")) return;
-
-    const btn = document.createElement("button");
-    btn.id = "novelo-exit";
-    btn.textContent = "❌ SAIR DO NOVELO";
-    btn.style.cssText = `
-      position:absolute;
-      bottom:50px;
-      left:20px;
-      background:#b42318;
-      color:#fff;
-      padding:12px 18px;
-      border:none;
-      border-radius:6px;
-      z-index:50;
-    `;
-    btn.onclick = exitNovelo;
-
-    document.body.appendChild(btn);
+    exitBtn.onclick = exitNovelo;
+    updateActionBarVisibility();
   }
 
   function exitNovelo() {
@@ -1784,8 +1839,9 @@ async function openFromGithub() {
 
     mainMapBackup = null;
     activeNovelo = null;
+    selectedNoveloId = null;
 
-    document.getElementById("novelo-exit").remove();
+    updateActionBarVisibility();
     draw();
   }
 
@@ -1794,6 +1850,10 @@ async function openFromGithub() {
     if (activeNovelo && activeNovelo.id === id) {
       alert("Feche o novelo antes de excluir.");
       return;
+    }
+
+    if (selectedNoveloId === id) {
+      selectedNoveloId = null;
     }
 
     // Atualiza a global novelos
