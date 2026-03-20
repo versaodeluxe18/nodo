@@ -4,13 +4,25 @@
     <meta charset="UTF-8">
     <title>NÓ-DO</title>
     <style>
-        
+        :root {
+            --layout-accent: #0e639c;
+            --intro-duration: 4200ms;
+        }
+
         body {
             margin: 0;
             overflow: hidden;
             background-color: #1e1e1e;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #ccc;
+        }
+
+        body.intro-active #toolbar,
+        body.intro-active .instruction,
+        body.intro-active #code-panel,
+        body.intro-active #openMenu {
+            opacity: 0;
+            pointer-events: none;
         }
 
         /* Barra de Ferramentas Superior */
@@ -143,12 +155,195 @@
     color: #d4d4d4;
 }
 
+#intro-overlay {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: #1e1e1e;
+    z-index: 999;
+    pointer-events: none;
+}
+
+.intro-wordmark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.35rem, 1vw, 1rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--layout-accent);
+    text-transform: uppercase;
+    text-shadow: 0 0 24px rgba(14, 99, 156, 0.35);
+    opacity: 0;
+    animation: introWordmarkInOut var(--intro-duration) ease forwards;
+}
+
+.intro-group {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-items: center;
+    column-gap: clamp(0.25rem, 0.8vw, 0.75rem);
+    min-width: clamp(11rem, 19vw, 15rem);
+}
+
+.intro-bracket,
+.intro-word,
+.intro-tilde {
+    line-height: 1;
+}
+
+.intro-bracket {
+    font-size: clamp(5rem, 11vw, 9rem);
+    animation-duration: var(--intro-duration);
+    animation-fill-mode: forwards;
+    animation-timing-function: ease-in-out;
+}
+
+.intro-bracket.left {
+    animation-name: revealBracketLeft;
+}
+
+.intro-bracket.right {
+    animation-name: revealBracketRight;
+}
+
+.intro-word {
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.82);
+    animation: revealWord var(--intro-duration) ease forwards;
+}
+
+.intro-tilde {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(2rem, 4vw, 3.5rem);
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    opacity: 0;
+    transform: scale(0.6);
+    animation: revealTilde var(--intro-duration) ease forwards;
+}
+
+@keyframes introWordmarkInOut {
+    0% {
+        opacity: 0;
+        transform: scale(0.72);
+    }
+    14% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    84% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes revealBracketLeft {
+    0%, 16% {
+        transform: translateX(0.88em);
+    }
+    42%, 84% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-0.04em);
+    }
+}
+
+@keyframes revealBracketRight {
+    0%, 16% {
+        transform: translateX(-0.88em);
+    }
+    42%, 84% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(0.04em);
+    }
+}
+
+@keyframes revealWord {
+    0%, 18% {
+        opacity: 0;
+        transform: scale(0.82);
+        filter: blur(10px);
+    }
+    34%, 84% {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+        filter: blur(6px);
+    }
+}
+
+@keyframes revealTilde {
+    0%, 54% {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    68%, 84% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.02);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .intro-wordmark,
+    .intro-bracket,
+    .intro-word,
+    .intro-tilde {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    body.intro-active #toolbar,
+    body.intro-active .instruction,
+    body.intro-active #code-panel,
+    body.intro-active #openMenu {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
     </style>
 
 
     
 </head>
 <body>
+
+    <div id="intro-overlay" aria-hidden="true">
+        <div class="intro-wordmark">
+            <div class="intro-group" aria-label="NÓ">
+                <span class="intro-bracket left">[</span>
+                <span class="intro-word">NÓ</span>
+                <span class="intro-bracket right">]</span>
+            </div>
+            <span class="intro-tilde">~</span>
+            <div class="intro-group" aria-label="DO">
+                <span class="intro-bracket left">[</span>
+                <span class="intro-word">DO</span>
+                <span class="intro-bracket right">]</span>
+            </div>
+        </div>
+    </div>
 
     <div id="toolbar">
         <button onclick="addNode()">+ NOVO CARTÃO</button>
@@ -242,6 +437,33 @@
 
 
     
+    <script>
+        (() => {
+            const introOverlay = document.getElementById('intro-overlay');
+            const introWordmark = introOverlay?.querySelector('.intro-wordmark');
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            let introFinished = false;
+
+            if (!introOverlay || !introWordmark) return;
+
+            const finishIntro = () => {
+                if (introFinished) return;
+                introFinished = true;
+                document.body.classList.remove('intro-active');
+                introOverlay.remove();
+            };
+
+            if (prefersReducedMotion) {
+                finishIntro();
+                return;
+            }
+
+            document.body.classList.add('intro-active');
+            introWordmark.addEventListener('animationend', finishIntro, { once: true });
+            window.setTimeout(finishIntro, 4600);
+        })();
+    </script>
+
     <script> 
         const canvas = document.getElementById('gameMap');
         const ctx = canvas.getContext('2d');
