@@ -372,7 +372,6 @@
   z-index:100;
   box-shadow:0 6px 20px rgba(0,0,0,.4);
 ">
-  <button id="openNoveloBtn" class="secondary" style="display:none;" onclick="openSelectedNovelo()">🧶 DESSENROLAR NOVELO</button>
   <button class="secondary" onclick="openLocalFile()">📂 Arquivo local</button>          
   <button class="secondary" onclick="openFromGithub()">🔗 GitHub (RAW)</button>         
   <button class="secondary" onclick="openProjetoNodo()">🚀 Projeto Nó-do</button>
@@ -1001,9 +1000,10 @@ if (e.button === 2) {
   const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
   if (!target) return;
 
-  // SE FOR NOVELO → ABRE MENU "ABRIR" COM AÇÃO DE DESENROLAR
+  // SE FOR NOVELO → ABRE PAINEL DE NOVELOS
   if (target.isNovelo) {
-    showEnterNoveloButton(target.noveloId);
+    const panel = document.getElementById("novelo-panel");
+    panel.style.right = "0px";
     return;
   }
 
@@ -1058,57 +1058,20 @@ canvas.addEventListener("click", (e) => {
         
         const openBtn = document.getElementById("openBtn");
 const openMenu = document.getElementById("openMenu");
-const openNoveloBtn = document.getElementById("openNoveloBtn");
-let selectedNoveloId = null;
-
-function positionOpenMenu() {
-  const rect = openBtn.getBoundingClientRect();
-  openMenu.style.top = rect.bottom + 5 + "px";
-  openMenu.style.left = rect.left + "px";
-}
-
-function showOpenMenu() {
-  positionOpenMenu();
-  openMenu.style.display = "flex";
-}
-
-function hideOpenMenu() {
-  openMenu.style.display = "none";
-}
-
-function showEnterNoveloButton(noveloId) {
-  selectedNoveloId = noveloId;
-  openNoveloBtn.style.display = "block";
-  showOpenMenu();
-}
-
-function removeEnterNoveloButton() {
-  selectedNoveloId = null;
-  openNoveloBtn.style.display = "none";
-}
-
-function toggleOpenMenu() {
-  if (openMenu.style.display === "flex") {
-    hideOpenMenu();
-    return;
-  }
-
-  showOpenMenu();
-}
-
-window.openSelectedNovelo = function () {
-  if (!selectedNoveloId) return;
-  hideOpenMenu();
-  openNovelo(selectedNoveloId);
-};
 
 openBtn.onclick = () => {
-  toggleOpenMenu();
+  const rect = openBtn.getBoundingClientRect();
+
+  openMenu.style.top = rect.bottom + 5 + "px";
+  openMenu.style.left = rect.left + "px";
+
+  openMenu.style.display =
+    openMenu.style.display === "flex" ? "none" : "flex";
 };
 
 document.addEventListener("click", e => {
   if (!openBtn.contains(e.target) && !openMenu.contains(e.target)) {
-    hideOpenMenu();
+    openMenu.style.display = "none";
   }
 });
 
@@ -1752,8 +1715,6 @@ async function openFromGithub() {
     });
 
     activeNovelo = n;
-    removeEnterNoveloButton();
-    hideOpenMenu();
     showExitButton();
     draw();
   };
@@ -1823,7 +1784,6 @@ async function openFromGithub() {
 
     mainMapBackup = null;
     activeNovelo = null;
-    removeEnterNoveloButton();
 
     document.getElementById("novelo-exit").remove();
     draw();
