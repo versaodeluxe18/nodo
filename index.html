@@ -50,10 +50,44 @@
             font-weight: bold;
             font-size: 13px;
             transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            line-height: 1;
+        }
+
+        button .button-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        button .button-icon svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        button .button-label {
+            display: inline-flex;
+            align-items: center;
+        }
+
+        button.icon-only {
+            padding: 8px;
+            min-width: 32px;
         }
 
         button:hover { background: #1177bb; }
-        
+
         button.secondary { background: #3c3c3c; }
         button.secondary:hover { background: #4c4c4c; }
 
@@ -127,7 +161,7 @@
             padding: 0 10px;
         }
         .close-btn:hover { background: #444; }
-        
+
         .instruction {
             position: absolute;
             bottom: 10px;
@@ -138,7 +172,7 @@
             user-select: none;
         }
 
-                
+
 #file-type {
     background: #1e1e1e;
     color: #d4d4d4;
@@ -325,7 +359,7 @@
     </style>
 
 
-    
+
 </head>
 <body>
 
@@ -350,11 +384,11 @@
         <button class="secondary" onclick="connectNodes()">LIGAR</button>
         <button class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
 
-        
+
         <div class="separator"></div>
 
-        <button class="success" onclick="exportProject()">💾</button>
-        <button id="openBtn" class="warning">📂</button>
+        <button id="saveBtn" class="success icon-only" onclick="exportProject()" aria-label="Salvar projeto" title="Salvar projeto"></button>
+        <button id="openBtn" class="warning icon-only" aria-label="Abrir projeto" title="Abrir projeto"></button>
         </div>
 
 
@@ -372,13 +406,13 @@
   z-index:100;
   box-shadow:0 6px 20px rgba(0,0,0,.4);
 ">
-  <button class="secondary" onclick="openLocalFile()">📂 Arquivo local</button>          
-  <button class="secondary" onclick="openFromGithub()">🔗 GitHub (RAW)</button>         
-  <button class="secondary" onclick="openProjetoNodo()">🚀 Projeto Nó-do</button>
+  <button id="openLocalFileBtn" class="secondary" onclick="openLocalFile()"></button>
+  <button id="openFromGithubBtn" class="secondary" onclick="openFromGithub()"></button>
+  <button id="openProjetoNodoBtn" class="secondary" onclick="openProjetoNodo()"></button>
 </div>
 
 
-    
+
 
     <input type="file" id="fileInput" style="display: none;" accept=".json" onchange="importProject(this)">
 
@@ -392,13 +426,13 @@
 
   <div class="panel-header">
       <h3 id="panel-title">Editor</h3>
-      <button class="close-btn" onclick="closePanel()">×</button>          
+      <button class="close-btn" onclick="closePanel()">×</button>
   </div>
 
 
 
 
-      
+
 
   <!-- TIPO DE ARQUIVO -->
   <select id="file-type" onchange="changeFileType(this.value)">
@@ -436,7 +470,7 @@
 
 
 
-    
+
     <script>
         (() => {
             const introOverlay = document.getElementById('intro-overlay');
@@ -464,7 +498,7 @@
         })();
     </script>
 
-    <script> 
+    <script>
         const canvas = document.getElementById('gameMap');
         const ctx = canvas.getContext('2d');
         canvas.addEventListener("contextmenu", e => e.preventDefault());
@@ -479,7 +513,29 @@
         var novelos = []; // <--- AGORA GLOBAL DE VERDADE
         var devLogs = []; // <--- GLOBAL PARA LOGS
         var selectedNodes = [];
-        
+        const Icons = {
+            save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"></path><path d="M8 4v6h8V4"></path><path d="M9 16h6"></path></svg>`,
+            folder: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"></path></svg>`,
+            note: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l4 4v12H8z"></path><path d="M16 4v4h4"></path><path d="M11 13h6"></path><path d="M11 17h6"></path></svg>`,
+            yarn: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="10" r="6"></circle><path d="M8 8c2 2 6 2 8 0"></path><path d="M7 11c2 1.5 8 1.5 10 0"></path><path d="M8 14c2-1.5 6-1.5 8 0"></path><path d="M12 16c0 2.5-1.5 3.5-3 4"></path></svg>`,
+            github: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 15l6-6"></path><path d="M10.5 6.5h5v5"></path><path d="M8 8H6.5A2.5 2.5 0 0 0 4 10.5v7A2.5 2.5 0 0 0 6.5 20h7a2.5 2.5 0 0 0 2.5-2.5V16"></path></svg>`,
+            rocket: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4c3 0 5 2 6 6-2.5 1-5.5 4-6 6-4-1-6-3-6-6 2-4 4-6 6-6z"></path><path d="M10 14L5 19"></path><path d="M9 19H5v-4"></path><circle cx="14" cy="10" r="1.5"></circle></svg>`,
+            exit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5"></path><path d="M20 12H9"></path><path d="M11 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5"></path></svg>`
+        };
+
+        function setButtonContent(button, icon, label = '') {
+            if (!button) return;
+            const iconMarkup = Icons[icon] ? `<span class="button-icon">${Icons[icon]}</span>` : '';
+            const labelMarkup = label ? `<span class="button-label">${label}</span>` : '';
+            button.innerHTML = `${iconMarkup}${labelMarkup}`;
+        }
+
+        setButtonContent(document.getElementById('saveBtn'), 'save');
+        setButtonContent(document.getElementById('openBtn'), 'folder');
+        setButtonContent(document.getElementById('openLocalFileBtn'), 'folder', 'Arquivo local');
+        setButtonContent(document.getElementById('openFromGithubBtn'), 'github', 'GitHub (RAW)');
+        setButtonContent(document.getElementById('openProjetoNodoBtn'), 'rocket', 'Projeto Nó-do');
+
         let isPanning = false;
         let isDragging = false;
 let dragTarget = null;
@@ -521,16 +577,16 @@ let panStartY = 0;
                 // Sombra para profundidade
                 ctx.shadowColor = 'rgba(0,0,0,0.5)';
                 ctx.shadowBlur = 15;
-                
+
                 // Fundo do Nó
                 ctx.fillStyle = isSelected ? '#094771' : this.color; // Azul mais escuro quando selecionado
                 ctx.fillRect(this.x, this.y, this.width, this.height);
-                
+
                 // Borda
                 ctx.strokeStyle = isSelected ? '#007acc' : '#555'; // Borda azul VSCode quando selecionado
                 ctx.lineWidth = isSelected ? 2 : 1;
                 ctx.strokeRect(this.x, this.y, this.width, this.height);
-                
+
                 ctx.shadowBlur = 0; // Reset sombra
 
                 // Cabeçalho (Barra superior do nó)
@@ -614,12 +670,12 @@ connections: connections.map(c => ({
             const file = inputElement.files[0];
             if (!file) return;
 
-            
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    
+
                     loadProjectData(data);
                     alert("Projeto carregado com sucesso!");
 
@@ -644,13 +700,13 @@ connections: connections.map(c => ({
     const node = new Node(n.x, n.y, n.label, n.type, n.id);
     node.description = n.description || "";
     node.code = n.code || "";
-    
+
     // Propriedades de Novelo
     if (n.isNovelo) {
         node.isNovelo = true;
         node.noveloId = n.noveloId;
     }
-    
+
     nodes.push(node);
   });
 
@@ -667,7 +723,7 @@ connections: connections.map(c => ({
   } else {
     devLogs = [];
   }
-  
+
   // Restaurar Novelos
   if (data.novelos) {
     novelos = data.novelos;
@@ -698,11 +754,11 @@ connections: connections.map(c => ({
 
         function connectNodes() {
             if (selectedNodes.length === 2) {
-                const exists = connections.some(c => 
+                const exists = connections.some(c =>
                     (c.from === selectedNodes[0] && c.to === selectedNodes[1]) ||
                     (c.from === selectedNodes[1] && c.to === selectedNodes[0])
                 );
-                
+
                 if (!exists) {
                     connections.push({ from: selectedNodes[0], to: selectedNodes[1] });
                 }
@@ -758,7 +814,7 @@ function toggleConnection(a, b) {
     playLinkEffect(a, b, "link");
   }
 }
-        
+
 
         function clearSelection() {
             selectedNodes = [];
@@ -853,7 +909,7 @@ function toggleConnection(a, b) {
             ctx.strokeStyle = '#2e2e2e';
             ctx.lineWidth = 1;
             const gridSize = 40;
-            
+
             ctx.beginPath();
             for(let x=0; x<canvas.width; x+=gridSize) {
                 ctx.moveTo(x, 0);
@@ -992,7 +1048,7 @@ if (e.button === 2) {
 
 
 
-        
+
    canvas.addEventListener('dblclick', (e) => {
   const mouseX = e.clientX;
   const mouseY = e.clientY;
@@ -1043,7 +1099,7 @@ canvas.addEventListener("click", (e) => {
 
 
 
-        
+
 
 
         window.addEventListener("keydown", e => {
@@ -1054,8 +1110,8 @@ canvas.addEventListener("click", (e) => {
     deleteSelectedNodes();
   }
 });
-       
-        
+
+
         const openBtn = document.getElementById("openBtn");
 const openMenu = document.getElementById("openMenu");
 
@@ -1077,7 +1133,7 @@ document.addEventListener("click", e => {
 
 
 
-        
+
 
         // --- PAINEL DE CÓDIGO ---
 
@@ -1095,7 +1151,7 @@ document.addEventListener("click", e => {
     if (!activeNode) return;
     panelTitle.innerText = `${activeNode.label}.${activeNode.type}`;
 }
-     
+
 
 
         function changeFileType(type) {
@@ -1117,7 +1173,7 @@ document.addEventListener("click", e => {
     document.getElementById('file-type').value = 'js';
     codeEditor.blur();
 }
-        
+
         codeEditor.addEventListener('input', (e) => {
             if (activeNode) {
                 activeNode.code = e.target.value;
@@ -1136,13 +1192,13 @@ descriptionEditor.addEventListener('input', e => {
 
         // Inicialização
         resizeCanvas();
-        
+
         // Exemplo inicial se vazio
         if(nodes.length === 0) {
             const n1 = new Node(415, 267,"LEIA / README", "txt");
             n1.description = "🙋🏻‍♂️ Bem-Vindo, amigo!";
             n1.code = ` ~~INSTRUÇÕES PRA USAR O NÓ-DO~~\n\n🖱️ CLIQUE DUPLO: abrir cartão\n🖱️ CLIQUE DIREITO: liga ou desliga nó \n🖱️ SHIFT: selecionar vários\n🖱️ ARRASTAR: mover o mapa\n🖱️ DELETE: apaga cartão\n__________\n📂 ABRIR: Abrir um projeto\n💾 SALVAR: Salvar o projeto\n📝 DEVLOG: Registrar o fluxo\n🧶 NOVELO: Criar novo mapa
-__________            
+__________
 ⌨️ CTRL+Z: Desfazer ações
         `;
             const n2 = new Node(777, 269, "VERSÃO", "txt");
@@ -1208,7 +1264,7 @@ async function openFromGithub() {
 
 
 
-    
+
 <script>
 /* ================================
    DEV LOG — EXTENSÃO DO IDEOGRAMA
@@ -1224,8 +1280,11 @@ async function openFromGithub() {
   const toolbar = document.getElementById("toolbar");
 
   const devBtn = document.createElement("button");
-  devBtn.textContent = "📝";
-  devBtn.className = "secondary";
+  devBtn.classList.add("icon-only");
+  devBtn.setAttribute("aria-label", "Abrir dev log");
+  devBtn.setAttribute("title", "Abrir dev log");
+  setButtonContent(devBtn, "note");
+  devBtn.className = "secondary icon-only";
   devBtn.style.marginLeft = "auto";
   devBtn.onclick = toggleDevLog;
 
@@ -1318,9 +1377,9 @@ async function openFromGithub() {
     const box = document.getElementById("devlog-history");
 
     const colors = {
-      "atualização": "#2da042", 
-      "problema": "#f85149",    
-      "manutenção": "#d29922"  
+      "atualização": "#2da042",
+      "problema": "#f85149",
+      "manutenção": "#d29922"
     };
 
     box.innerHTML = devLogs.map(log => {
@@ -1412,7 +1471,7 @@ async function openFromGithub() {
 
 
 
-    
+
 <script>
 /* =================================================
    FEEDBACK VISUAL
@@ -1563,7 +1622,7 @@ async function openFromGithub() {
 
   const enterBtn = document.createElement("button");
   enterBtn.id = "novelo-enter";
-  enterBtn.textContent = "🧶 DESENROLAR NOVELO";
+  setButtonContent(enterBtn, "yarn", "DESENROLAR NOVELO");
   enterBtn.style.cssText = `
     display:none;
     background:#0e639c;
@@ -1579,7 +1638,7 @@ async function openFromGithub() {
 
   const exitBtn = document.createElement("button");
   exitBtn.id = "novelo-exit";
-  exitBtn.textContent = "❌ SAIR DO NOVELO";
+  setButtonContent(exitBtn, "exit", "SAIR DO NOVELO");
   exitBtn.style.cssText = `
     display:none;
     background:#b42318;
@@ -1619,8 +1678,11 @@ async function openFromGithub() {
   const toolbar = document.getElementById("toolbar");
 
   const noveloBtn = document.createElement("button");
-  noveloBtn.textContent = "🧶";
-  noveloBtn.className = "secondary";
+  noveloBtn.classList.add("icon-only");
+  noveloBtn.setAttribute("aria-label", "Abrir painel de novelos");
+  noveloBtn.setAttribute("title", "Abrir painel de novelos");
+  setButtonContent(noveloBtn, "yarn");
+  noveloBtn.className = "secondary icon-only";
   noveloBtn.onclick = toggleNoveloPanel;
 
   toolbar.appendChild(noveloBtn);
@@ -1861,10 +1923,10 @@ async function openFromGithub() {
         window.novelos = window.novelos.filter(n => n.id !== id);
         // Sincroniza referência local se necessário, embora não deva ser pois usamos a global
     }
-    
+
     // Também remove nós que referenciam este novelo
     nodes = nodes.filter(n => n.noveloId !== id);
-    
+
     renderNovelos();
     draw();
   };
@@ -1873,11 +1935,11 @@ async function openFromGithub() {
 </script>
 
 
-    
+
 
 <script>
 /* ===============================================
-   UNDO — CTRL + Z 
+   UNDO — CTRL + Z
 ================================================ */
 
 (function() {
@@ -1977,18 +2039,18 @@ async function openFromGithub() {
     undoBtn.style.borderRadius = "4px";
     undoBtn.style.cursor = "pointer";
     undoBtn.style.fontWeight = "bold";
-    
+
     undoBtn.onclick = () => {
       const action = undoStack.pop();
       if (action && typeof action.undoFunc === "function") {
         action.undoFunc();
-        
+
         // Remove o item da lista visualmente
         if (list.firstChild) list.removeChild(list.firstChild);
-        
+
         // Feedback visual
-        draw(); 
-        
+        draw();
+
         // Fecha se acabar
         if (undoStack.length === 0) {
           overlay.remove();
@@ -2023,7 +2085,7 @@ async function openFromGithub() {
   window.addNode = function(...args) {
     const initialLength = nodes.length;
     originalAddNode(...args);
-    
+
     // Verifica se realmente adicionou (usuário pode ter cancelado o prompt)
     if (nodes.length > initialLength) {
       const addedNode = nodes[nodes.length - 1];
@@ -2047,7 +2109,7 @@ async function openFromGithub() {
 
     // Guarda REFERÊNCIAS aos objetos originais, não cópias
     const nodesToSave = [...selectedNodes];
-    
+
     // Guarda conexões que envolvem estes nós antes que sejam destruídas
     const connectionsToSave = connections.filter(c =>
       nodesToSave.includes(c.from) || nodesToSave.includes(c.to)
@@ -2061,10 +2123,10 @@ async function openFromGithub() {
       undoFunc: () => {
         // Restaura os nós originais para o array global
         nodes.push(...nodesToSave);
-        
+
         // Restaura as conexões (que ainda apontam para os objetos restaurados)
         connections.push(...connectionsToSave);
-        
+
         draw();
       }
     });
@@ -2075,7 +2137,7 @@ async function openFromGithub() {
   window.connectNodes = function(...args) {
     const countBefore = connections.length;
     originalConnectNodes(...args);
-    
+
     // Se houve adição
     if (connections.length > countBefore) {
       const newConn = connections[connections.length - 1];
@@ -2121,7 +2183,7 @@ async function openFromGithub() {
   // 5. Movimento (CORRIGIDO: Snapshot no mousedown para evitar race condition)
   // O evento mousedown deste script roda APÓS o do script principal (se inserido depois),
   // portanto 'dragTarget' e 'selectedNodes' já estarão configurados pelo main.
-  
+
   canvas.addEventListener("mousedown", (e) => {
       // Se o script principal detectou um alvo para arrastar
       if (dragTarget) {
@@ -2140,14 +2202,14 @@ async function openFromGithub() {
   canvas.addEventListener("mouseup", () => {
       if (moveSnapshot) {
           // Verifica se houve deslocamento real em algum nó
-          const hasMoved = moveSnapshot.some(item => 
+          const hasMoved = moveSnapshot.some(item =>
               item.node.x !== item.startX || item.node.y !== item.startY
           );
 
           if (hasMoved) {
               // Cria closure com os dados do snapshot atual
               const recordedSnapshot = [...moveSnapshot];
-              
+
               registerAction({
                   type: "Mover nó(s)",
                   description: recordedSnapshot.length > 1 ? "Vários nós" : recordedSnapshot[0].node.label,
@@ -2182,7 +2244,7 @@ async function openFromGithub() {
 
 
 
-    
+
 
 <script>
 /* =========================================================
@@ -2190,17 +2252,16 @@ async function openFromGithub() {
    ========================================================= */
 (function () {
 
-  /* 1. LOCALIZAR O BOTÃO DE SALVAR (Incluindo Emoji 💾) */
+  /* 1. LOCALIZAR O BOTÃO DE SALVAR */
   function findSaveButton() {
     const buttons = document.querySelectorAll('button, a');
     for (const el of buttons) {
       const text = (el.innerText || '').toLowerCase();
       const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-      // Correção: Adicionado check para o emoji '💾' usado no HTML
       if (
+        el.id === 'saveBtn' ||
         text.includes('salv') ||
         text.includes('save') ||
-        text.includes('💾') || 
         aria.includes('salv') ||
         aria.includes('save')
       ) {
@@ -2249,15 +2310,15 @@ async function openFromGithub() {
     saveBtn.classList.add('save-structure-pending');
   }
 
-  /* 3. INTERCEPTAÇÃO DE FUNÇÕES (Mecanismo Principal) 
+  /* 3. INTERCEPTAÇÃO DE FUNÇÕES (Mecanismo Principal)
      Como é um app Canvas, MutationObserver não funciona bem.
      Interceptamos as funções globais que alteram o estado. */
 
   const actions = [
-    'addNode', 
-    'deleteSelectedNodes', 
-    'connectNodes', 
-    'unlinkSelectedNodes', 
+    'addNode',
+    'deleteSelectedNodes',
+    'connectNodes',
+    'unlinkSelectedNodes',
     'toggleConnection'
   ];
 
@@ -2300,7 +2361,7 @@ async function openFromGithub() {
   }
 
   /* 6. RESETAR AO SALVAR/CARREGAR */
-  
+
   // Wrapper para Salvar
   if (typeof window.exportProject === 'function') {
     const origExport = window.exportProject;
@@ -2333,6 +2394,6 @@ async function openFromGithub() {
 
 
 
-    
+
 </body>
 </html>
