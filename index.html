@@ -1622,7 +1622,7 @@ async function openFromGithub() {
 
   const enterBtn = document.createElement("button");
   enterBtn.id = "novelo-enter";
-  setButtonContent(enterBtn, "yarn", "DESENROLAR NOVELO");
+  setButtonContent(enterBtn, "yarn", "  DESENROLAR NOVELO");
   enterBtn.style.cssText = `
     display:none;
     background:#0e639c;
@@ -1638,7 +1638,7 @@ async function openFromGithub() {
 
   const exitBtn = document.createElement("button");
   exitBtn.id = "novelo-exit";
-  setButtonContent(exitBtn, "exit", "SAIR DO NOVELO");
+  setButtonContent(exitBtn, "exit", "  SAIR DO NOVELO");
   exitBtn.style.cssText = `
     display:none;
     background:#b42318;
@@ -1707,7 +1707,7 @@ async function openFromGithub() {
 
   panel.innerHTML = `
     <div style="padding:15px;background:#333;display:flex;justify-content:space-between;">
-      <strong>🧶 NOVELOS</strong>
+      <strong>NOVELOS</strong>
       <button style="background:none;color:#fff;font-size:20px;"
         onclick="document.getElementById('novelo-panel').style.right='-420px'">×</button>
     </div>
