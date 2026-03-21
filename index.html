@@ -548,6 +548,14 @@ let panStartY = 0;
         let activeNode = null; // Nó sendo editado no painel
         let activeOrderIndexEditor = null;
 
+        const ORDER_BADGE_STYLE = {
+            fill: '#0e639c',
+            text: '#ffffff',
+            diameter: 24,
+            horizontalPadding: 10,
+            font: 'bold 12px Segoe UI'
+        };
+
         // Configuração do Canvas
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -584,43 +592,57 @@ let panStartY = 0;
 
             getOrderBadgeRect(ctx) {
                 const text = this.getOrderBadgeText();
-                const badgeHeight = 18;
-                const horizontalPadding = 7;
-                const minWidth = 18;
+                const badgeHeight = ORDER_BADGE_STYLE.diameter;
+                const minWidth = ORDER_BADGE_STYLE.diameter;
                 const textWidth = text ? ctx.measureText(text).width : 0;
-                const badgeWidth = Math.max(minWidth, textWidth + horizontalPadding * 2);
+                const badgeWidth = Math.max(minWidth, textWidth + ORDER_BADGE_STYLE.horizontalPadding * 2);
+                const centerX = this.x + this.width;
+                const centerY = this.y;
 
                 return {
-                    x: this.x + this.width - badgeWidth - 8,
-                    y: this.y + Math.round((25 - badgeHeight) / 2),
+                    x: centerX - badgeWidth / 2,
+                    y: centerY - badgeHeight / 2,
                     width: badgeWidth,
                     height: badgeHeight,
-                    radius: badgeHeight / 2
+                    radius: badgeHeight / 2,
+                    centerX,
+                    centerY
                 };
             }
 
             isPointInsideOrderBadge(x, y) {
                 ctx.save();
-                ctx.font = 'bold 11px Segoe UI';
+                ctx.font = ORDER_BADGE_STYLE.font;
                 const badge = this.getOrderBadgeRect(ctx);
                 ctx.restore();
 
-                return x >= badge.x && x <= badge.x + badge.width &&
-                       y >= badge.y && y <= badge.y + badge.height;
+                const radius = badge.height / 2;
+                const centerY = badge.y + radius;
+                const leftCircleCenterX = badge.x + radius;
+                const rightCircleCenterX = badge.x + badge.width - radius;
+
+                if (x >= leftCircleCenterX && x <= rightCircleCenterX && y >= badge.y && y <= badge.y + badge.height) {
+                    return true;
+                }
+
+                const leftDistance = Math.hypot(x - leftCircleCenterX, y - centerY);
+                const rightDistance = Math.hypot(x - rightCircleCenterX, y - centerY);
+
+                return leftDistance <= radius || rightDistance <= radius;
             }
 
             drawOrderBadge(ctx) {
                 const badge = this.getOrderBadgeRect(ctx);
                 const text = this.getOrderBadgeText();
 
-                ctx.fillStyle = '#ffb347';
+                ctx.fillStyle = ORDER_BADGE_STYLE.fill;
                 drawRoundedRect(ctx, badge.x, badge.y, badge.width, badge.height, badge.radius);
                 ctx.fill();
 
                 if (!text) return;
 
-                ctx.fillStyle = '#1e1e1e';
-                ctx.font = 'bold 11px Segoe UI';
+                ctx.fillStyle = ORDER_BADGE_STYLE.text;
+                ctx.font = ORDER_BADGE_STYLE.font;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(text, badge.x + badge.width / 2, badge.y + badge.height / 2 + 0.5);
@@ -946,14 +968,47 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     ctx.closePath();
 }
 
+        function syncOrderIndexEditorPosition() {
+    if (!activeOrderIndexEditor) return;
+
+    const { input, node } = activeOrderIndexEditor;
+
+    ctx.save();
+    ctx.font = ORDER_BADGE_STYLE.font;
+    const badge = node.getOrderBadgeRect(ctx);
+    ctx.restore();
+
+    const valueWidth = input.value ? measureOrderBadgeTextWidth(input.value) : 0;
+    const editorWidth = Math.max(ORDER_BADGE_STYLE.diameter + 8, valueWidth + ORDER_BADGE_STYLE.horizontalPadding * 2 + 10);
+    const canvasRect = canvas.getBoundingClientRect();
+
+    input.style.left = `${canvasRect.left + badge.centerX - editorWidth / 2}px`;
+    input.style.top = `${canvasRect.top + badge.centerY - badge.height / 2}px`;
+    input.style.width = `${editorWidth}px`;
+    input.style.height = `${badge.height}px`;
+    input.style.borderRadius = `${badge.radius}px`;
+}
+
+        function measureOrderBadgeTextWidth(text) {
+    ctx.save();
+    ctx.font = ORDER_BADGE_STYLE.font;
+    const width = ctx.measureText(text).width;
+    ctx.restore();
+    return width;
+}
+
+        function sanitizeOrderIndexValue(value) {
+    return value.replace(/\D/g, '');
+}
+
         function removeOrderIndexEditor(saveValue = false) {
     if (!activeOrderIndexEditor) return;
 
     const { input, node } = activeOrderIndexEditor;
 
     if (saveValue) {
-        const sanitized = input.value.replace(/\D/g, '').slice(0, 1);
-        node.orderIndex = sanitized === '' ? null : Number(sanitized);
+        const sanitized = sanitizeOrderIndexValue(input.value);
+        node.orderIndex = sanitized === '' ? null : sanitized;
         draw();
     }
 
@@ -964,40 +1019,31 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         function openOrderIndexEditor(node) {
     removeOrderIndexEditor(false);
 
-    ctx.save();
-    ctx.font = 'bold 11px Segoe UI';
-    const badge = node.getOrderBadgeRect(ctx);
-    ctx.restore();
-
-    const canvasRect = canvas.getBoundingClientRect();
     const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
-    input.max = '9';
-    input.step = '1';
+    input.type = 'text';
     input.inputMode = 'numeric';
+    input.autocomplete = 'off';
     input.value = node.orderIndex ?? '';
     input.style.position = 'absolute';
-    input.style.left = `${canvasRect.left + badge.x}px`;
-    input.style.top = `${canvasRect.top + badge.y}px`;
-    input.style.width = `${Math.max(36, badge.width + 18)}px`;
-    input.style.height = `${badge.height}px`;
-    input.style.padding = '0 6px';
-    input.style.borderRadius = `${badge.radius}px`;
-    input.style.border = '1px solid #ffb347';
-    input.style.background = '#252526';
-    input.style.color = '#fff';
-    input.style.font = 'bold 11px Segoe UI';
+    input.style.padding = '0 10px';
+    input.style.borderRadius = `${ORDER_BADGE_STYLE.diameter / 2}px`;
+    input.style.border = `1px solid ${ORDER_BADGE_STYLE.fill}`;
+    input.style.background = ORDER_BADGE_STYLE.fill;
+    input.style.color = ORDER_BADGE_STYLE.text;
+    input.style.font = ORDER_BADGE_STYLE.font;
     input.style.textAlign = 'center';
     input.style.zIndex = '1000';
     input.style.outline = 'none';
     input.style.boxSizing = 'border-box';
+    input.style.boxShadow = '0 6px 18px rgba(0,0,0,0.3)';
 
     input.addEventListener('input', () => {
-        const sanitized = input.value.replace(/\D/g, '').slice(0, 1);
+        const sanitized = sanitizeOrderIndexValue(input.value);
         if (input.value !== sanitized) {
             input.value = sanitized;
         }
+
+        syncOrderIndexEditorPosition();
     });
 
     input.addEventListener('keydown', (event) => {
@@ -1015,6 +1061,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
     document.body.appendChild(input);
     activeOrderIndexEditor = { input, node };
+    syncOrderIndexEditorPosition();
     input.focus();
     input.select();
 }
@@ -1051,6 +1098,8 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
                 const isSelected = selectedNodes.includes(node);
                 node.draw(ctx, isSelected);
             });
+
+            syncOrderIndexEditorPosition();
         }
 
         function drawGrid() {
@@ -1073,10 +1122,16 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         // --- INTERAÇÃO (MOUSE) ---
 
        canvas.addEventListener('mousedown', (e) => {
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
 
     dragTarget = null;
+
+    const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
+    if (badgeTarget && e.button === 0) {
+        return;
+    }
 
     // Verifica se clicou em algum nó (de cima pra baixo)
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -1087,9 +1142,6 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     }
 
 if (e.button === 2) {
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
-
   const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
   if (!target) return;
 
@@ -1193,6 +1245,8 @@ if (e.button === 2) {
     isPanning = false;
     dragTarget = null;
 });
+
+        window.addEventListener('resize', syncOrderIndexEditorPosition);
 
 
 
@@ -1978,6 +2032,7 @@ async function openFromGithub() {
     type: n.type,
     description: n.description,
     code: n.code,
+    orderIndex: n.orderIndex,
     isNovelo: n.isNovelo || false,
     noveloId: n.noveloId || null
   })),
@@ -1996,6 +2051,7 @@ async function openFromGithub() {
       const node = new Node(d.x, d.y, d.label, d.type, d.id);
       node.description = d.description;
       node.code = d.code;
+      node.orderIndex = d.orderIndex ?? null;
       nodes.push(node);
     });
 
@@ -2025,7 +2081,8 @@ async function openFromGithub() {
       label: n.label,
       type: n.type,
       description: n.description,
-      code: n.code
+      code: n.code,
+      orderIndex: n.orderIndex
     }));
 
     activeNovelo.connections = connections.map(c => ({
@@ -2040,6 +2097,7 @@ async function openFromGithub() {
   const node = new Node(d.x, d.y, d.label, d.type, d.id);
   node.description = d.description;
   node.code = d.code;
+  node.orderIndex = d.orderIndex ?? null;
 
   // 🔑 RESTAURA IDENTIDADE DE NOVELO
   if (d.isNovelo) {
