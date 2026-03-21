@@ -546,6 +546,7 @@ let panStartX = 0;
 let panStartY = 0;
 
         let activeNode = null; // Nó sendo editado no painel
+        let activeOrderIndexEditor = null;
 
         // Configuração do Canvas
         function resizeCanvas() {
@@ -568,9 +569,64 @@ let panStartY = 0;
         this.type = type;
         this.description = '';
         this.color = '#3c3c3c';
+        this.orderIndex = null;
 
         this.code = `// Código para ${label}\n`;
     }
+
+            getOrderBadgeText() {
+                if (this.orderIndex === null || this.orderIndex === undefined || this.orderIndex === '') {
+                    return '';
+                }
+
+                return String(this.orderIndex);
+            }
+
+            getOrderBadgeRect(ctx) {
+                const text = this.getOrderBadgeText();
+                const badgeHeight = 18;
+                const horizontalPadding = 7;
+                const minWidth = 18;
+                const textWidth = text ? ctx.measureText(text).width : 0;
+                const badgeWidth = Math.max(minWidth, textWidth + horizontalPadding * 2);
+
+                return {
+                    x: this.x + this.width - badgeWidth - 8,
+                    y: this.y + Math.round((25 - badgeHeight) / 2),
+                    width: badgeWidth,
+                    height: badgeHeight,
+                    radius: badgeHeight / 2
+                };
+            }
+
+            isPointInsideOrderBadge(x, y) {
+                ctx.save();
+                ctx.font = 'bold 11px Segoe UI';
+                const badge = this.getOrderBadgeRect(ctx);
+                ctx.restore();
+
+                return x >= badge.x && x <= badge.x + badge.width &&
+                       y >= badge.y && y <= badge.y + badge.height;
+            }
+
+            drawOrderBadge(ctx) {
+                const badge = this.getOrderBadgeRect(ctx);
+                const text = this.getOrderBadgeText();
+
+                ctx.fillStyle = '#ffb347';
+                drawRoundedRect(ctx, badge.x, badge.y, badge.width, badge.height, badge.radius);
+                ctx.fill();
+
+                if (!text) return;
+
+                ctx.fillStyle = '#1e1e1e';
+                ctx.font = 'bold 11px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, badge.x + badge.width / 2, badge.y + badge.height / 2 + 0.5);
+                ctx.textAlign = 'start';
+                ctx.textBaseline = 'alphabetic';
+            }
 
 
             draw(ctx, isSelected) {
@@ -597,6 +653,7 @@ let panStartY = 0;
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 13px Segoe UI';
                 ctx.fillText(`${this.label}.${this.type}`, this.x + 10, this.y + 17);
+                this.drawOrderBadge(ctx);
 
 
 
@@ -647,7 +704,8 @@ drawMultilineText(
     label: n.label,
     type: n.type,
     description: n.description,
-    code: n.code
+    code: n.code,
+    orderIndex: n.orderIndex
 })),
 connections: connections.map(c => ({
     from: c.from.id,
@@ -700,6 +758,7 @@ connections: connections.map(c => ({
     const node = new Node(n.x, n.y, n.label, n.type, n.id);
     node.description = n.description || "";
     node.code = n.code || "";
+    node.orderIndex = n.orderIndex ?? null;
 
     // Propriedades de Novelo
     if (n.isNovelo) {
@@ -843,7 +902,7 @@ function toggleConnection(a, b) {
 }
 
 
-        function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
+function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) {
     const words = text.split(' ');
     let line = '';
     let lines = [];
@@ -869,6 +928,95 @@ function toggleConnection(a, b) {
     lines.forEach((l, i) => {
         ctx.fillText(l, x, y + i * lineHeight);
     });
+}
+
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+    const safeRadius = Math.min(radius, width / 2, height / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(x + safeRadius, y);
+    ctx.lineTo(x + width - safeRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+    ctx.lineTo(x + width, y + height - safeRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+    ctx.lineTo(x + safeRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+    ctx.lineTo(x, y + safeRadius);
+    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+    ctx.closePath();
+}
+
+        function removeOrderIndexEditor(saveValue = false) {
+    if (!activeOrderIndexEditor) return;
+
+    const { input, node } = activeOrderIndexEditor;
+
+    if (saveValue) {
+        const sanitized = input.value.replace(/\D/g, '').slice(0, 1);
+        node.orderIndex = sanitized === '' ? null : Number(sanitized);
+        draw();
+    }
+
+    input.remove();
+    activeOrderIndexEditor = null;
+}
+
+        function openOrderIndexEditor(node) {
+    removeOrderIndexEditor(false);
+
+    ctx.save();
+    ctx.font = 'bold 11px Segoe UI';
+    const badge = node.getOrderBadgeRect(ctx);
+    ctx.restore();
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.max = '9';
+    input.step = '1';
+    input.inputMode = 'numeric';
+    input.value = node.orderIndex ?? '';
+    input.style.position = 'absolute';
+    input.style.left = `${canvasRect.left + badge.x}px`;
+    input.style.top = `${canvasRect.top + badge.y}px`;
+    input.style.width = `${Math.max(36, badge.width + 18)}px`;
+    input.style.height = `${badge.height}px`;
+    input.style.padding = '0 6px';
+    input.style.borderRadius = `${badge.radius}px`;
+    input.style.border = '1px solid #ffb347';
+    input.style.background = '#252526';
+    input.style.color = '#fff';
+    input.style.font = 'bold 11px Segoe UI';
+    input.style.textAlign = 'center';
+    input.style.zIndex = '1000';
+    input.style.outline = 'none';
+    input.style.boxSizing = 'border-box';
+
+    input.addEventListener('input', () => {
+        const sanitized = input.value.replace(/\D/g, '').slice(0, 1);
+        if (input.value !== sanitized) {
+            input.value = sanitized;
+        }
+    });
+
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            input.blur();
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            removeOrderIndexEditor(false);
+            draw();
+        }
+    });
+
+    input.addEventListener('blur', () => removeOrderIndexEditor(true), { once: true });
+
+    document.body.appendChild(input);
+    activeOrderIndexEditor = { input, node };
+    input.focus();
+    input.select();
 }
 
 
@@ -1080,19 +1228,28 @@ canvas.addEventListener("click", (e) => {
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
 
-  const target = nodes.find(n => n.isPointInside(mx, my));
+  const target = [...nodes].reverse().find(n => n.isPointInside(mx, my));
   if (!target) {
+    removeOrderIndexEditor(false);
     removeEnterNoveloButton();
+    return;
+  }
+
+  if (!target.isNovelo && target.isPointInsideOrderBadge(mx, my)) {
+    removeEnterNoveloButton();
+    openOrderIndexEditor(target);
     return;
   }
 
   // CARD DE NOVELO → MOSTRA BOTÃO
   if (target.isNovelo) {
+    removeOrderIndexEditor(false);
     showEnterNoveloButton(target.noveloId);
     return;
   }
 
   // CARD NORMAL → esconde botão
+  removeOrderIndexEditor(false);
   removeEnterNoveloButton();
 });
 
@@ -1420,6 +1577,7 @@ async function openFromGithub() {
         type: n.type,
         description: n.description,
         code: n.code,
+        orderIndex: n.orderIndex,
         // Persistir propriedades de novelo
         isNovelo: n.isNovelo,
         noveloId: n.noveloId
