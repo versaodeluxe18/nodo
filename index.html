@@ -1181,15 +1181,13 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
         // --- INTERAÇÃO (MOUSE / TOUCH) ---
 
-       function getPrimaryPointer(e) {
-    if (e.touches && e.touches.length > 0) return e.touches[0];
-    if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0];
-    return e;
-}
-
-       function getPointerPosition(e) {
-    const pointer = getPrimaryPointer(e);
+       function getCoordinates(e) {
+    const isTouchEvent = (typeof TouchEvent !== 'undefined' && e instanceof TouchEvent) || e.type.startsWith('touch');
+    const pointer = isTouchEvent
+        ? (e.touches && e.touches.length > 0 ? e.touches[0] : e.changedTouches[0])
+        : e;
     const rect = canvas.getBoundingClientRect();
+
     return {
         x: pointer.clientX - rect.left,
         y: pointer.clientY - rect.top
@@ -1197,7 +1195,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 }
 
        function handlePointerStart(e) {
-    const { x: pointerX, y: pointerY } = getPointerPosition(e);
+    const { x: pointerX, y: pointerY } = getCoordinates(e);
     const isTouchEvent = e.type.startsWith('touch');
     const button = isTouchEvent ? 0 : e.button;
 
@@ -1279,7 +1277,7 @@ if (button === 2) {
 }
 
        function handlePointerMove(e) {
-    const { x: pointerX, y: pointerY } = getPointerPosition(e);
+    const { x: pointerX, y: pointerY } = getCoordinates(e);
 
     if (e.type.startsWith('touch')) {
         e.preventDefault();
@@ -1348,8 +1346,7 @@ if (button === 2) {
 
 
    canvas.addEventListener('dblclick', (e) => {
-  const mouseX = e.clientX;
-  const mouseY = e.clientY;
+  const { x: mouseX, y: mouseY } = getCoordinates(e);
 
   const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
   if (badgeTarget) return;
@@ -1377,9 +1374,7 @@ canvas.addEventListener("click", (e) => {
   if (isDragging || isPanning) return;
   const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
 
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  const { x: mx, y: my } = getCoordinates(e);
 
   const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mx, my));
   if (badgeTarget) {
