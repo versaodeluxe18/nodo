@@ -733,7 +733,7 @@ connections: connections.map(c => ({
     from: c.from.id,
     to: c.to.id
 })),
-                novelos: novelos // Inclui os novelos no export original
+                novelos: serializeNovelos() // Inclui os novelos no export original
             };
 
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 2));
@@ -1001,6 +1001,31 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     return value.replace(/\D/g, '');
 }
 
+        function syncNoveloOrderIndex(node) {
+    if (!node?.isNovelo || !node.noveloId) return;
+
+    const noveloCollection = window.novelos || novelos;
+    const novelo = noveloCollection.find(item => item.id === node.noveloId);
+    if (novelo) {
+        novelo.orderIndex = node.orderIndex ?? null;
+    }
+
+    nodes.forEach(currentNode => {
+        if (currentNode.isNovelo && currentNode.noveloId === node.noveloId) {
+            currentNode.orderIndex = node.orderIndex ?? null;
+        }
+    });
+}
+
+        function serializeNovelos() {
+    return (window.novelos || novelos).map(n => ({
+        ...n,
+        orderIndex: n.orderIndex ?? null,
+        nodes: (n.nodes || []).map(node => ({ ...node })),
+        connections: (n.connections || []).map(connection => ({ ...connection }))
+    }));
+}
+
         function removeOrderIndexEditor(saveValue = false) {
     if (!activeOrderIndexEditor) return;
 
@@ -1009,6 +1034,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     if (saveValue) {
         const sanitized = sanitizeOrderIndexValue(input.value);
         node.orderIndex = sanitized === '' ? null : sanitized;
+        syncNoveloOrderIndex(node);
         draw();
     }
 
@@ -1130,6 +1156,9 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
     if (badgeTarget && e.button === 0) {
+        isDragging = false;
+        isPanning = false;
+        removeEnterNoveloButton();
         return;
     }
 
@@ -1255,6 +1284,9 @@ if (e.button === 2) {
   const mouseX = e.clientX;
   const mouseY = e.clientY;
 
+  const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
+  if (badgeTarget) return;
+
   const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
   if (!target) return;
 
@@ -1282,7 +1314,7 @@ canvas.addEventListener("click", (e) => {
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
 
-  const badgeTarget = [...nodes].reverse().find(node => !node.isNovelo && node.isPointInsideOrderBadge(mx, my));
+  const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mx, my));
   if (badgeTarget) {
     removeEnterNoveloButton();
     openOrderIndexEditor(badgeTarget);
@@ -1641,7 +1673,7 @@ async function openFromGithub() {
       })),
       devLogs: devLogs,
       // Persistir array global de novelos (Agora acessível via window.novelos ou var novelos)
-      novelos: window.novelos || novelos
+      novelos: serializeNovelos()
     };
 
     const dataStr = "data:text/json;charset=utf-8," +
@@ -1985,6 +2017,7 @@ async function openFromGithub() {
       id: Date.now().toString(),
       name,
       description: document.getElementById("novelo-desc").value,
+      orderIndex: null,
       nodes: [],
       connections: []
     });
@@ -2008,6 +2041,7 @@ async function openFromGithub() {
 
     card.isNovelo = true;
     card.noveloId = id;
+    card.orderIndex = n.orderIndex ?? null;
 
     nodes.push(card);
     draw();
