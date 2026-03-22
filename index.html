@@ -1276,7 +1276,7 @@ if (e.button === 2) {
 
 canvas.addEventListener("click", (e) => {
   if (isDragging || isPanning) return;
-  if (window.isNoveloActive && window.isNoveloActive()) return;
+  const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
 
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
@@ -1296,10 +1296,12 @@ canvas.addEventListener("click", (e) => {
     return;
   }
 
-  // CARD DE NOVELO → MOSTRA BOTÃO
+  // CARD DE NOVELO → MOSTRA BOTÃO somente no mapa principal
   if (target.isNovelo) {
     removeOrderIndexEditor(false);
-    showEnterNoveloButton(target.noveloId);
+    if (!isInsideActiveNovelo) {
+      showEnterNoveloButton(target.noveloId);
+    }
     return;
   }
 
