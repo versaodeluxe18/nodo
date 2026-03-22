@@ -109,6 +109,7 @@
         canvas {
             display: block;
             cursor: grab;
+            touch-action: none;
         }
         canvas:active { cursor: grabbing; }
 
@@ -1178,33 +1179,52 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
             ctx.stroke();
         }
 
-        // --- INTERAÇÃO (MOUSE) ---
+        // --- INTERAÇÃO (MOUSE / TOUCH) ---
 
-       canvas.addEventListener('mousedown', (e) => {
+       function getPrimaryPointer(e) {
+    if (e.touches && e.touches.length > 0) return e.touches[0];
+    if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0];
+    return e;
+}
+
+       function getPointerPosition(e) {
+    const pointer = getPrimaryPointer(e);
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    return {
+        x: pointer.clientX - rect.left,
+        y: pointer.clientY - rect.top
+    };
+}
+
+       function handlePointerStart(e) {
+    const { x: pointerX, y: pointerY } = getPointerPosition(e);
+    const isTouchEvent = e.type.startsWith('touch');
+    const button = isTouchEvent ? 0 : e.button;
+
+    if (isTouchEvent) {
+        e.preventDefault();
+    }
 
     dragTarget = null;
 
-    const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
-    if (badgeTarget && e.button === 0) {
+    const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
+    if (badgeTarget && button === 0) {
         isDragging = false;
         isPanning = false;
         removeEnterNoveloButton();
         return;
     }
 
-    // Verifica se clicou em algum nó (de cima pra baixo)
+    // Verifica se clicou/tocou em algum nó (de cima pra baixo)
     for (let i = nodes.length - 1; i >= 0; i--) {
-        if (nodes[i].isPointInside(mouseX, mouseY)) {
+        if (nodes[i].isPointInside(pointerX, pointerY)) {
             dragTarget = nodes[i];
             break;
         }
     }
 
-if (e.button === 2) {
-  const target = nodes.find(n => n.isPointInside(mouseX, mouseY));
+if (button === 2) {
+  const target = nodes.find(n => n.isPointInside(pointerX, pointerY));
   if (!target) return;
 
   if (selectedNodes.length !== 1) return;
@@ -1220,8 +1240,8 @@ if (e.button === 2) {
     if (dragTarget) {
         // ===== MOVE NÓ =====
         isDragging = true;
-        offsetX = mouseX - dragTarget.x;
-        offsetY = mouseY - dragTarget.y;
+        offsetX = pointerX - dragTarget.x;
+        offsetY = pointerY - dragTarget.y;
 
         if (e.shiftKey) {
             if (selectedNodes.includes(dragTarget)) {
@@ -1249,31 +1269,34 @@ if (e.button === 2) {
     } else {
         // ===== MOVE FUNDO =====
         isPanning = true;
-        panStartX = mouseX;
-        panStartY = mouseY;
+        panStartX = pointerX;
+        panStartY = pointerY;
 
         if (!e.shiftKey) {
             clearSelection();
         }
     }
-});
+}
 
-       canvas.addEventListener('mousemove', (e) => {
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
+       function handlePointerMove(e) {
+    const { x: pointerX, y: pointerY } = getPointerPosition(e);
+
+    if (e.type.startsWith('touch')) {
+        e.preventDefault();
+    }
 
     // ===== PAN DO FUNDO =====
     if (isPanning) {
-        const dx = mouseX - panStartX;
-        const dy = mouseY - panStartY;
+        const dx = pointerX - panStartX;
+        const dy = pointerY - panStartY;
 
         nodes.forEach(node => {
             node.x += dx;
             node.y += dy;
         });
 
-        panStartX = mouseX;
-        panStartY = mouseY;
+        panStartX = pointerX;
+        panStartY = pointerY;
 
         draw();
         return;
@@ -1282,31 +1305,42 @@ if (e.button === 2) {
     // ===== MOVE NÓ =====
     if (isDragging && dragTarget) {
         if (selectedNodes.includes(dragTarget) && selectedNodes.length > 1) {
-            const deltaX = mouseX - (dragTarget.x + offsetX);
-            const deltaY = mouseY - (dragTarget.y + offsetY);
+            const deltaX = pointerX - (dragTarget.x + offsetX);
+            const deltaY = pointerY - (dragTarget.y + offsetY);
 
             selectedNodes.forEach(node => {
                 node.x += deltaX;
                 node.y += deltaY;
             });
 
-            offsetX = mouseX - dragTarget.x;
-            offsetY = mouseY - dragTarget.y;
+            offsetX = pointerX - dragTarget.x;
+            offsetY = pointerY - dragTarget.y;
         } else {
-            dragTarget.x = mouseX - offsetX;
-            dragTarget.y = mouseY - offsetY;
+            dragTarget.x = pointerX - offsetX;
+            dragTarget.y = pointerY - offsetY;
         }
 
         draw();
     }
-});
+}
 
+       function handlePointerEnd(e) {
+    if (e.type.startsWith('touch')) {
+        e.preventDefault();
+    }
 
-        canvas.addEventListener('mouseup', () => {
     isDragging = false;
     isPanning = false;
     dragTarget = null;
-});
+}
+
+       canvas.addEventListener('mousedown', handlePointerStart);
+       canvas.addEventListener('mousemove', handlePointerMove);
+       canvas.addEventListener('mouseup', handlePointerEnd);
+       canvas.addEventListener('touchstart', handlePointerStart, { passive: false });
+       canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+       canvas.addEventListener('touchend', handlePointerEnd, { passive: false });
+       canvas.addEventListener('touchcancel', handlePointerEnd, { passive: false });
 
         window.addEventListener('resize', syncOrderIndexEditorPosition);
 
@@ -2466,7 +2500,7 @@ async function openFromGithub() {
   // O evento mousedown deste script roda APÓS o do script principal (se inserido depois),
   // portanto 'dragTarget' e 'selectedNodes' já estarão configurados pelo main.
 
-  canvas.addEventListener("mousedown", (e) => {
+  const captureMoveSnapshot = () => {
       // Se o script principal detectou um alvo para arrastar
       if (dragTarget) {
           // Determina quais nós estão sendo movidos
@@ -2479,9 +2513,9 @@ async function openFromGithub() {
       } else {
           moveSnapshot = null;
       }
-  });
+  };
 
-  canvas.addEventListener("mouseup", () => {
+  const registerMoveSnapshot = () => {
       if (moveSnapshot) {
           // Verifica se houve deslocamento real em algum nó
           const hasMoved = moveSnapshot.some(item =>
@@ -2508,7 +2542,13 @@ async function openFromGithub() {
           // Limpa snapshot
           moveSnapshot = null;
       }
-  });
+  };
+
+  canvas.addEventListener("mousedown", captureMoveSnapshot);
+  canvas.addEventListener("touchstart", captureMoveSnapshot, { passive: false });
+  canvas.addEventListener("mouseup", registerMoveSnapshot);
+  canvas.addEventListener("touchend", registerMoveSnapshot, { passive: false });
+  canvas.addEventListener("touchcancel", registerMoveSnapshot, { passive: false });
 
 
   // ----- HOTKEY CTRL + Z -----
@@ -2628,18 +2668,30 @@ async function openFromGithub() {
   const canvas = document.getElementById('gameMap') || document.querySelector('canvas');
   if (canvas) {
     let startX = 0, startY = 0;
-    canvas.addEventListener('mousedown', (e) => {
-      startX = e.clientX;
-      startY = e.clientY;
-    });
-    canvas.addEventListener('mouseup', (e) => {
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
+    const getPrimaryPointer = (e) => {
+      if (e.touches && e.touches.length > 0) return e.touches[0];
+      if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0];
+      return e;
+    };
+    const captureStartPosition = (e) => {
+      const pointer = getPrimaryPointer(e);
+      startX = pointer.clientX;
+      startY = pointer.clientY;
+    };
+    const markCanvasLayoutChange = (e) => {
+      const pointer = getPrimaryPointer(e);
+      const dx = Math.abs(pointer.clientX - startX);
+      const dy = Math.abs(pointer.clientY - startY);
       // Se moveu mais que 5 pixels, considera alteração de layout
       if (dx > 5 || dy > 5) {
         markLayout();
       }
-    });
+    };
+    canvas.addEventListener('mousedown', captureStartPosition);
+    canvas.addEventListener('touchstart', captureStartPosition, { passive: false });
+    canvas.addEventListener('mouseup', markCanvasLayoutChange);
+    canvas.addEventListener('touchend', markCanvasLayoutChange, { passive: false });
+    canvas.addEventListener('touchcancel', markCanvasLayoutChange, { passive: false });
   }
 
   /* 6. RESETAR AO SALVAR/CARREGAR */
