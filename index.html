@@ -1181,11 +1181,22 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
         // --- INTERAÇÃO (MOUSE / TOUCH) ---
 
-       function getCoordinates(e) {
-    const isTouchEvent = (typeof TouchEvent !== 'undefined' && e instanceof TouchEvent) || e.type.startsWith('touch');
-    const pointer = isTouchEvent
-        ? (e.touches && e.touches.length > 0 ? e.touches[0] : e.changedTouches[0])
-        : e;
+       let pointerDownPos = null;
+       let pointerMoved = false;
+       let activePointerType = null;
+
+       function isTouchLikeEvent(e) {
+    return e.type.startsWith('touch');
+}
+
+       function getPointerSource(e) {
+    if (e.touches && e.touches.length > 0) return e.touches[0];
+    if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0];
+    return e;
+}
+
+       function getPointerPos(e) {
+    const pointer = getPointerSource(e);
     const rect = canvas.getBoundingClientRect();
 
     return {
@@ -1194,15 +1205,47 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     };
 }
 
+       function handleCanvasTap(pointerX, pointerY) {
+    const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
+    const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
+
+    if (badgeTarget) {
+        removeEnterNoveloButton();
+        openOrderIndexEditor(badgeTarget);
+        return;
+    }
+
+    const target = [...nodes].reverse().find(n => n.isPointInside(pointerX, pointerY));
+    if (!target) {
+        removeOrderIndexEditor(false);
+        removeEnterNoveloButton();
+        return;
+    }
+
+    if (target.isNovelo) {
+        removeOrderIndexEditor(false);
+        if (!isInsideActiveNovelo) {
+            showEnterNoveloButton(target.noveloId);
+        }
+        return;
+    }
+
+    removeOrderIndexEditor(false);
+    removeEnterNoveloButton();
+}
+
        function handlePointerStart(e) {
-    const { x: pointerX, y: pointerY } = getCoordinates(e);
-    const isTouchEvent = e.type.startsWith('touch');
+    const { x: pointerX, y: pointerY } = getPointerPos(e);
+    const isTouchEvent = isTouchLikeEvent(e);
     const button = isTouchEvent ? 0 : e.button;
 
     if (isTouchEvent) {
         e.preventDefault();
     }
 
+    activePointerType = isTouchEvent ? 'touch' : 'mouse';
+    pointerDownPos = { x: pointerX, y: pointerY };
+    pointerMoved = false;
     dragTarget = null;
 
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
@@ -1213,7 +1256,6 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         return;
     }
 
-    // Verifica se clicou/tocou em algum nó (de cima pra baixo)
     for (let i = nodes.length - 1; i >= 0; i--) {
         if (nodes[i].isPointInside(pointerX, pointerY)) {
             dragTarget = nodes[i];
@@ -1236,7 +1278,6 @@ if (button === 2) {
 }
 
     if (dragTarget) {
-        // ===== MOVE NÓ =====
         isDragging = true;
         offsetX = pointerX - dragTarget.x;
         offsetY = pointerY - dragTarget.y;
@@ -1256,7 +1297,6 @@ if (button === 2) {
             }
         }
 
-        // traz para frente
         const index = nodes.indexOf(dragTarget);
         if (index > -1) {
             nodes.splice(index, 1);
@@ -1265,7 +1305,6 @@ if (button === 2) {
 
         draw();
     } else {
-        // ===== MOVE FUNDO =====
         isPanning = true;
         panStartX = pointerX;
         panStartY = pointerY;
@@ -1277,13 +1316,20 @@ if (button === 2) {
 }
 
        function handlePointerMove(e) {
-    const { x: pointerX, y: pointerY } = getCoordinates(e);
+    const { x: pointerX, y: pointerY } = getPointerPos(e);
 
-    if (e.type.startsWith('touch')) {
+    if (isTouchLikeEvent(e)) {
         e.preventDefault();
     }
 
-    // ===== PAN DO FUNDO =====
+    if (pointerDownPos) {
+        const movedX = Math.abs(pointerX - pointerDownPos.x);
+        const movedY = Math.abs(pointerY - pointerDownPos.y);
+        if (movedX > 4 || movedY > 4) {
+            pointerMoved = true;
+        }
+    }
+
     if (isPanning) {
         const dx = pointerX - panStartX;
         const dy = pointerY - panStartY;
@@ -1300,7 +1346,6 @@ if (button === 2) {
         return;
     }
 
-    // ===== MOVE NÓ =====
     if (isDragging && dragTarget) {
         if (selectedNodes.includes(dragTarget) && selectedNodes.length > 1) {
             const deltaX = pointerX - (dragTarget.x + offsetX);
@@ -1323,13 +1368,25 @@ if (button === 2) {
 }
 
        function handlePointerEnd(e) {
-    if (e.type.startsWith('touch')) {
+    const isTouchEvent = isTouchLikeEvent(e);
+
+    if (isTouchEvent) {
         e.preventDefault();
     }
+
+    const { x: pointerX, y: pointerY } = getPointerPos(e);
+    const shouldHandleTap = pointerDownPos && !pointerMoved && activePointerType === (isTouchEvent ? 'touch' : 'mouse');
 
     isDragging = false;
     isPanning = false;
     dragTarget = null;
+    activePointerType = null;
+    pointerDownPos = null;
+    pointerMoved = false;
+
+    if (shouldHandleTap && e.type !== 'mouseup' && e.type !== 'touchcancel') {
+        handleCanvasTap(pointerX, pointerY);
+    }
 }
 
        canvas.addEventListener('mousedown', handlePointerStart);
@@ -1346,7 +1403,7 @@ if (button === 2) {
 
 
    canvas.addEventListener('dblclick', (e) => {
-  const { x: mouseX, y: mouseY } = getCoordinates(e);
+  const { x: mouseX, y: mouseY } = getPointerPos(e);
 
   const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mouseX, mouseY));
   if (badgeTarget) return;
@@ -1372,36 +1429,8 @@ if (button === 2) {
 
 canvas.addEventListener("click", (e) => {
   if (isDragging || isPanning) return;
-  const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
-
-  const { x: mx, y: my } = getCoordinates(e);
-
-  const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(mx, my));
-  if (badgeTarget) {
-    removeEnterNoveloButton();
-    openOrderIndexEditor(badgeTarget);
-    return;
-  }
-
-  const target = [...nodes].reverse().find(n => n.isPointInside(mx, my));
-  if (!target) {
-    removeOrderIndexEditor(false);
-    removeEnterNoveloButton();
-    return;
-  }
-
-  // CARD DE NOVELO → MOSTRA BOTÃO somente no mapa principal
-  if (target.isNovelo) {
-    removeOrderIndexEditor(false);
-    if (!isInsideActiveNovelo) {
-      showEnterNoveloButton(target.noveloId);
-    }
-    return;
-  }
-
-  // CARD NORMAL → esconde botão
-  removeOrderIndexEditor(false);
-  removeEnterNoveloButton();
+  const { x: pointerX, y: pointerY } = getPointerPos(e);
+  handleCanvasTap(pointerX, pointerY);
 });
 
 
@@ -2495,7 +2524,10 @@ async function openFromGithub() {
   // O evento mousedown deste script roda APÓS o do script principal (se inserido depois),
   // portanto 'dragTarget' e 'selectedNodes' já estarão configurados pelo main.
 
-  const captureMoveSnapshot = () => {
+  const captureMoveSnapshot = (e) => {
+      if (e?.type?.startsWith("touch")) {
+          e.preventDefault();
+      }
       // Se o script principal detectou um alvo para arrastar
       if (dragTarget) {
           // Determina quais nós estão sendo movidos
@@ -2510,7 +2542,10 @@ async function openFromGithub() {
       }
   };
 
-  const registerMoveSnapshot = () => {
+  const registerMoveSnapshot = (e) => {
+      if (e?.type?.startsWith("touch")) {
+          e.preventDefault();
+      }
       if (moveSnapshot) {
           // Verifica se houve deslocamento real em algum nó
           const hasMoved = moveSnapshot.some(item =>
@@ -2669,11 +2704,17 @@ async function openFromGithub() {
       return e;
     };
     const captureStartPosition = (e) => {
+      if (e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
       const pointer = getPrimaryPointer(e);
       startX = pointer.clientX;
       startY = pointer.clientY;
     };
     const markCanvasLayoutChange = (e) => {
+      if (e.type.startsWith('touch')) {
+        e.preventDefault();
+      }
       const pointer = getPrimaryPointer(e);
       const dx = Math.abs(pointer.clientX - startX);
       const dy = Math.abs(pointer.clientY - startY);
