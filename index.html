@@ -1195,9 +1195,34 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     return e;
 }
 
+       function isBodyRotated() {
+    return document.body.style.transform.includes('rotate(90deg)');
+}
+
+       function getCanvasPointerRect() {
+    const rect = canvas.getBoundingClientRect();
+
+    if (!isBodyRotated()) {
+        return rect;
+    }
+
+    return {
+        ...rect,
+        width: rect.height,
+        height: rect.width
+    };
+}
+
        function getPointerPos(e) {
     const pointer = getPointerSource(e);
-    const rect = canvas.getBoundingClientRect();
+    const rect = getCanvasPointerRect();
+
+    if (isBodyRotated()) {
+        return {
+            x: pointer.clientY - rect.top,
+            y: rect.width - (pointer.clientX - rect.left)
+        };
+    }
 
     return {
         x: pointer.clientX - rect.left,
