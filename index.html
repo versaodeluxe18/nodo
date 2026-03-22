@@ -466,7 +466,40 @@
 </div>
 
 
+ <!-- Rotação de tela para mobile -->
+<script>
+function handleMobileRotation() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // Só age se for mobile e se a tela estiver na vertical (Portrait)
+    if (isMobile && window.innerHeight > window.innerWidth) {
+        document.body.style.position = "fixed";
+        document.body.style.width = "100vh";
+        document.body.style.height = "100vw";
+        document.body.style.transform = "rotate(90deg)";
+        document.body.style.transformOrigin = "top left";
+        document.body.style.top = "0";
+        document.body.style.left = "100%";
+        
+        // Ajuste específico para o Canvas não bugar no redimensionamento
+        if (typeof resizeCanvas === "function") {
+            // Invertemos os valores no resize para o cálculo interno do canvas
+            canvas.width = window.innerHeight;
+            canvas.height = window.innerWidth;
+            draw(); 
+        }
+    } else {
+        // Volta ao normal se o usuário deitar o celular ou estiver no PC
+        document.body.style = "";
+        if (typeof resizeCanvas === "function") resizeCanvas();
+    }
+}
 
+// Executa ao carregar e quando a tela mudar de tamanho
+window.addEventListener('load', handleMobileRotation);
+window.addEventListener('resize', handleMobileRotation);
+
+</script>
 
 
 
