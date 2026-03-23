@@ -563,8 +563,6 @@
         const codePanel = document.getElementById('code-panel');
         const codeEditor = document.getElementById('code-editor');
         const panelTitle = document.getElementById('panel-title');
-        const MOBILE_BREAKPOINT = 768;
-
         // Estado da Aplicação
         // Alterado de 'let' para 'var' para garantir escopo global no window
         var nodes = [];
@@ -1599,19 +1597,12 @@ document.addEventListener("click", e => {
   }
 });
 
-function getHiddenPanelOffset(panel) {
-  if (!panel) return "-420px";
-  const fallbackWidth = window.innerWidth <= MOBILE_BREAKPOINT
-    ? window.innerWidth
-    : Number.parseInt(panel.dataset.desktopWidth || panel.offsetWidth || 420, 10);
-  const panelWidth = Math.ceil(panel.getBoundingClientRect().width || panel.offsetWidth || fallbackWidth);
-  return `-${panelWidth}px`;
-}
-
 function setSlidingPanelState(panel, isOpen) {
   if (!panel) return;
   panel.dataset.open = isOpen ? 'true' : 'false';
-  panel.style.right = isOpen ? '0px' : getHiddenPanelOffset(panel);
+  panel.style.right = '0px';
+  panel.style.transform = isOpen ? 'translateX(0)' : 'translateX(100%)';
+  panel.style.pointerEvents = isOpen ? 'auto' : 'none';
 }
 
 function isSlidingPanelOpen(panel) {
@@ -1799,14 +1790,14 @@ async function openFromGithub() {
   panel.style.cssText = `
     position:absolute;
     top:0;
-    right:-420px;
+    right:0;
     width:400px;
     height:100vh;
     background:#252526;
     border-left:1px solid #333;
     display:flex;
     flex-direction:column;
-    transition:right .3s ease;
+    transition:transform .3s ease;
     z-index:30;
     box-shadow:-5px 0 15px rgba(0,0,0,.5);
   `;
@@ -2207,14 +2198,14 @@ async function openFromGithub() {
   panel.style.cssText = `
     position:absolute;
     top:0;
-    right:-420px;
+    right:0;
     width:400px;
     height:100vh;
     background:#252526;
     border-left:1px solid #333;
     display:flex;
     flex-direction:column;
-    transition:right .3s ease;
+    transition:transform .3s ease;
     z-index:40;
     box-shadow:-5px 0 15px rgba(0,0,0,.5);
   `;
