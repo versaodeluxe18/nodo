@@ -601,6 +601,7 @@ body:not(.ui-ready) #code-panel {
         var novelos = []; // <--- AGORA GLOBAL DE VERDADE
         var devLogs = []; // <--- GLOBAL PARA LOGS
         var selectedNodes = [];
+        let hasCustomizedInitialLayout = false;
         const Icons = {
             save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"></path><path d="M8 4v6h8V4"></path><path d="M9 16h6"></path></svg>`,
             folder: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h6l2 2h10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M3 7V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"></path></svg>`,
@@ -648,9 +649,32 @@ let panStartY = 0;
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            centerInitialCards();
             draw();
         }
         window.addEventListener('resize', resizeCanvas);
+
+        function getInitialCards() {
+            return nodes.filter(node => node.isInitialCard);
+        }
+
+        function centerInitialCards(force = false) {
+            const initialCards = getInitialCards();
+            if (initialCards.length !== 2) return;
+            if (hasCustomizedInitialLayout && !force) return;
+
+            const gap = Math.max(24, Math.min(72, canvas.width * 0.04));
+            const totalWidth = initialCards.reduce((sum, node) => sum + node.width, 0) + gap;
+            const startX = Math.max(24, (canvas.width - totalWidth) / 2);
+            const centerY = (canvas.height / 2) - 12;
+            let currentX = startX;
+
+            initialCards.forEach(node => {
+                node.x = currentX;
+                node.y = Math.max(80, centerY - (node.height / 2));
+                currentX += node.width + gap;
+            });
+        }
 
         // Classe Nó (Representa um arquivo)
       class Node {
@@ -859,6 +883,7 @@ connections: connections.map(c => ({
 
 
         function loadProjectData(data) {
+  hasCustomizedInitialLayout = true;
   nodes.length = 0;
   connections.length = 0;
   selectedNodes.length = 0;
@@ -1486,6 +1511,10 @@ if (button === 2) {
         const dx = pointerX - panStartX;
         const dy = pointerY - panStartY;
 
+        if (dx !== 0 || dy !== 0) {
+            hasCustomizedInitialLayout = true;
+        }
+
         nodes.forEach(node => {
             node.x += dx;
             node.y += dy;
@@ -1504,6 +1533,10 @@ if (button === 2) {
             const proposedDeltaY = pointerY - (dragTarget.y + offsetY);
             const { deltaX, deltaY } = clampNodesDelta(selectedNodes, proposedDeltaX, proposedDeltaY);
 
+            if (deltaX !== 0 || deltaY !== 0) {
+                hasCustomizedInitialLayout = true;
+            }
+
             selectedNodes.forEach(node => {
                 node.x += deltaX;
                 node.y += deltaY;
@@ -1513,6 +1546,9 @@ if (button === 2) {
             offsetY = pointerY - dragTarget.y;
         } else {
             const clampedPosition = clampNodePosition(dragTarget, pointerX - offsetX, pointerY - offsetY);
+            if (clampedPosition.x !== dragTarget.x || clampedPosition.y !== dragTarget.y) {
+                hasCustomizedInitialLayout = true;
+            }
             dragTarget.x = clampedPosition.x;
             dragTarget.y = clampedPosition.y;
         }
@@ -1761,16 +1797,19 @@ descriptionEditor.addEventListener('input', e => {
 
         // Exemplo inicial se vazio
         if(nodes.length === 0) {
-            const n1 = new Node(415, 267,"LEIA / README", "txt");
+            const n1 = new Node(0, 0,"LEIA / README", "txt");
+            n1.isInitialCard = true;
             n1.description = "Bem-Vindo, amigo!";
             n1.code = ` ~~INSTRUÇÕES PRA USAR O NÓ-DO~~\n\n🖱️ CLIQUE DUPLO: abrir cartão\n🖱️ CLIQUE DIREITO: liga ou desliga nó \n🖱️ SHIFT: selecionar vários\n🖱️ ARRASTAR: mover o mapa\n🖱️ DELETE: apaga cartão\n__________\n📂 ABRIR: Abrir um projeto\n💾 SALVAR: Salvar o projeto\n📝 DEVLOG: Registrar o fluxo\n🧶 NOVELO: Criar novo mapa
 __________
 ⌨️ CTRL+Z: Desfazer ações
         `;
-            const n2 = new Node(777, 269, "VERSÃO", "txt");
+            const n2 = new Node(0, 0, "VERSÃO", "txt");
+            n2.isInitialCard = true;
             n2.description = "V:1.0";
             n2.code = `~~INFORMAÇÕES DESSA VERSÃO~~\n\n- NOVIDADES:\n- Essa é a primeira versão de Nó-do, portanto tudo é novidade e estamos constantemente \nmelhorando o nosso projeto.\n\n`;
             nodes.push(n1, n2);
+            centerInitialCards(true);
             connections.push({from: n1, to: n2});
             draw();
         }
