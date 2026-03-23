@@ -1224,21 +1224,55 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     };
 }
 
-       function handleCanvasTap(pointerX, pointerY) {
+       let pointerDownContext = null;
+
+       function findTopNodeAt(pointerX, pointerY) {
+    return [...nodes].reverse().find(node => node.isPointInside(pointerX, pointerY)) || null;
+}
+
+       function updateNodeSelection(targetNode, isMultiSelect) {
+    if (!targetNode) return;
+
+    if (isMultiSelect) {
+        if (selectedNodes.includes(targetNode)) {
+            selectedNodes = selectedNodes.filter(node => node !== targetNode);
+        } else {
+            selectedNodes = [...selectedNodes, targetNode];
+        }
+        return;
+    }
+
+    if (!selectedNodes.includes(targetNode) || selectedNodes.length !== 1) {
+        selectedNodes = [targetNode];
+    }
+}
+
+       function handleCanvasTap(pointerX, pointerY, options = {}) {
+    const { shiftKey = false, preserveSelection = false } = options;
     const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
 
     if (badgeTarget) {
         removeEnterNoveloButton();
         openOrderIndexEditor(badgeTarget);
+        draw();
         return;
     }
 
-    const target = [...nodes].reverse().find(n => n.isPointInside(pointerX, pointerY));
+    const target = findTopNodeAt(pointerX, pointerY);
     if (!target) {
         removeOrderIndexEditor(false);
         removeEnterNoveloButton();
+        if (!shiftKey && !preserveSelection) {
+            clearSelection();
+            return;
+        }
+        draw();
         return;
+    }
+
+    if (!preserveSelection) {
+        updateNodeSelection(target, shiftKey);
     }
 
     if (target.isNovelo) {
@@ -1246,14 +1280,16 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         if (!isInsideActiveNovelo) {
             showEnterNoveloButton(target.noveloId);
         }
+        draw();
         return;
     }
 
     removeOrderIndexEditor(false);
     removeEnterNoveloButton();
+    draw();
 }
 
-       function handlePointerStart(e) {
+       function handlePointerDown(e) {
     const { x: pointerX, y: pointerY } = getPointerPos(e);
     const isTouchEvent = isTouchLikeEvent(e);
     const button = isTouchEvent ? 0 : e.button;
@@ -1265,57 +1301,65 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     activePointerType = isTouchEvent ? 'touch' : 'mouse';
     pointerDownPos = { x: pointerX, y: pointerY };
     pointerMoved = false;
+    pointerDownContext = null;
+    isDragging = false;
+    isPanning = false;
     dragTarget = null;
+    offsetX = 0;
+    offsetY = 0;
 
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
     if (badgeTarget && button === 0) {
-        isDragging = false;
-        isPanning = false;
+        pointerDownContext = { type: 'badge', node: badgeTarget, shiftKey: !!e.shiftKey, button };
         removeEnterNoveloButton();
         return;
     }
 
-    for (let i = nodes.length - 1; i >= 0; i--) {
-        if (nodes[i].isPointInside(pointerX, pointerY)) {
-            dragTarget = nodes[i];
-            break;
-        }
-    }
+    const target = findTopNodeAt(pointerX, pointerY);
 
 if (button === 2) {
-  const target = nodes.find(n => n.isPointInside(pointerX, pointerY));
-  if (!target) return;
-
-  if (selectedNodes.length !== 1) return;
+  if (!target || selectedNodes.length !== 1) {
+    pointerDownPos = null;
+    activePointerType = null;
+    return;
+  }
 
   const baseNode = selectedNodes[0];
-  if (baseNode === target) return;
+  if (baseNode === target) {
+    pointerDownPos = null;
+    activePointerType = null;
+    return;
+  }
 
   toggleConnection(baseNode, target);
   draw();
+  pointerDownPos = null;
+  activePointerType = null;
   return;
 }
 
-    if (dragTarget) {
-        isDragging = true;
-        const translatedOffsetX = pointerX - dragTarget.x;
-        const translatedOffsetY = pointerY - dragTarget.y;
-        offsetX = translatedOffsetX;
-        offsetY = translatedOffsetY;
+    if (button !== 0) {
+        pointerDownPos = null;
+        activePointerType = null;
+        return;
+    }
 
-        if (e.shiftKey) {
-            if (selectedNodes.includes(dragTarget)) {
-                selectedNodes = selectedNodes.filter(n => n !== dragTarget);
-            } else {
-                selectedNodes.push(dragTarget);
-            }
-        } else {
-            if (!selectedNodes.includes(dragTarget)) {
-                selectedNodes = [dragTarget];
-                if (activeNode && activeNode !== dragTarget) {
-                    openCodePanel(dragTarget);
-                }
-            }
+    pointerDownContext = {
+        type: target ? 'node' : 'canvas',
+        node: target,
+        shiftKey: !!e.shiftKey,
+        button
+    };
+
+    if (target) {
+        dragTarget = target;
+        offsetX = pointerX - dragTarget.x;
+        offsetY = pointerY - dragTarget.y;
+        updateNodeSelection(dragTarget, !!e.shiftKey);
+        isDragging = selectedNodes.includes(dragTarget);
+
+        if (!e.shiftKey && activeNode && activeNode !== dragTarget) {
+            openCodePanel(dragTarget);
         }
 
         const index = nodes.indexOf(dragTarget);
@@ -1325,15 +1369,12 @@ if (button === 2) {
         }
 
         draw();
-    } else {
-        isPanning = true;
-        panStartX = pointerX;
-        panStartY = pointerY;
-
-        if (!e.shiftKey) {
-            clearSelection();
-        }
+        return;
     }
+
+    isPanning = true;
+    panStartX = pointerX;
+    panStartY = pointerY;
 }
 
        function handlePointerMove(e) {
@@ -1390,7 +1431,7 @@ if (button === 2) {
     }
 }
 
-       function handlePointerEnd(e) {
+       function handlePointerUp(e) {
     const isTouchEvent = isTouchLikeEvent(e);
 
     if (isTouchEvent) {
@@ -1398,27 +1439,47 @@ if (button === 2) {
     }
 
     const { x: pointerX, y: pointerY } = getPointerPos(e);
-    const shouldHandleTap = pointerDownPos && !pointerMoved && activePointerType === (isTouchEvent ? 'touch' : 'mouse');
+    const expectedPointerType = isTouchEvent ? 'touch' : 'mouse';
+    const shouldHandleTap = Boolean(pointerDownPos) && !pointerMoved && activePointerType === expectedPointerType;
+    const currentPointerContext = pointerDownContext;
 
     isDragging = false;
     isPanning = false;
     dragTarget = null;
+    offsetX = 0;
+    offsetY = 0;
     activePointerType = null;
     pointerDownPos = null;
     pointerMoved = false;
+    pointerDownContext = null;
 
-    if (shouldHandleTap && e.type !== 'mouseup' && e.type !== 'touchcancel') {
-        handleCanvasTap(pointerX, pointerY);
+    if (!shouldHandleTap || e.type === 'touchcancel') {
+        return;
     }
+
+    if (currentPointerContext?.type === 'badge') {
+        handleCanvasTap(pointerX, pointerY, { shiftKey: currentPointerContext.shiftKey, preserveSelection: true });
+        return;
+    }
+
+    if (currentPointerContext?.type === 'node') {
+        handleCanvasTap(pointerX, pointerY, {
+            shiftKey: currentPointerContext.shiftKey,
+            preserveSelection: true
+        });
+        return;
+    }
+
+    handleCanvasTap(pointerX, pointerY, { shiftKey: currentPointerContext?.shiftKey });
 }
 
-       canvas.addEventListener('mousedown', handlePointerStart);
+       canvas.addEventListener('mousedown', handlePointerDown);
        canvas.addEventListener('mousemove', handlePointerMove);
-       canvas.addEventListener('mouseup', handlePointerEnd);
-       canvas.addEventListener('touchstart', handlePointerStart, { passive: false });
+       canvas.addEventListener('mouseup', handlePointerUp);
+       canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
        canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
-       canvas.addEventListener('touchend', handlePointerEnd, { passive: false });
-       canvas.addEventListener('touchcancel', handlePointerEnd, { passive: false });
+       canvas.addEventListener('touchend', handlePointerUp, { passive: false });
+       canvas.addEventListener('touchcancel', handlePointerUp, { passive: false });
 
         window.addEventListener('resize', syncOrderIndexEditorPosition);
 
@@ -1444,21 +1505,6 @@ if (button === 2) {
   // SE FOR CARD NORMAL → ABRE EDITOR
   openCodePanel(target);
 });
-
-
-
-
-
-
-canvas.addEventListener("click", (e) => {
-  if (isDragging || isPanning) return;
-  const { x: pointerX, y: pointerY } = getPointerPos(e);
-  handleCanvasTap(pointerX, pointerY);
-});
-
-
-
-
 
 
 
