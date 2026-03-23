@@ -23,6 +23,7 @@
         body.intro-active #code-panel,
         body.intro-active #openMenu {
             opacity: 0;
+            visibility: hidden;
             pointer-events: none;
         }
 
@@ -120,19 +121,34 @@
         #code-panel {
             position: absolute;
             top: 0;
-            right: -550px; /* Escondido inicialmente */
+            right: min(calc(-100vw - 32px), -550px); /* Escondido inicialmente */
             width: 500px;
             height: 100vh;
             background: #252526;
             border-left: 1px solid #333;
-            transition: right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1);
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition:
+                right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1),
+                opacity 0.2s ease,
+                visibility 0s linear 0.3s;
             display: flex;
             flex-direction: column;
             z-index: 20;
             box-shadow: -5px 0 15px rgba(0,0,0,0.5);
         }
 
-        #code-panel.active { right: 0; }
+        #code-panel.active {
+            right: 0;
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            transition:
+                right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1),
+                opacity 0.2s ease,
+                visibility 0s linear 0s;
+        }
 
         .panel-header {
             padding: 15px;
@@ -354,14 +370,47 @@
     }
 
     body.intro-active #toolbar,
-    body.intro-active .instruction,
+    body.intro-active .instruction {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
     body.intro-active #code-panel,
     body.intro-active #openMenu {
-        opacity: 1;
-        pointer-events: auto;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
     }
 }
 
+body:not(.ui-ready) #code-panel {
+    transition: none !important;
+}
+
+#openMenu {
+    position: absolute;
+    top: 55px;
+    left: 10px;
+    background: #252526;
+    border: 1px solid #333;
+    border-radius: 4px;
+    display: none;
+    flex-direction: column;
+    min-width: 220px;
+    z-index: 100;
+    box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#openMenu.is-open {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+}
 
 #code-panel,
 #devlog-panel,
@@ -454,19 +503,7 @@
 
 
         <!-- MENU SUSPENSO DE ABERTURA -->
-        <div id="openMenu" style="
-  position:absolute;
-  top:55px;
-  left:10px;
-  background:#252526;
-  border:1px solid #333;
-  border-radius:4px;
-  display:none;
-  flex-direction:column;
-  min-width:220px;
-  z-index:100;
-  box-shadow:0 6px 20px rgba(0,0,0,.4);
-">
+        <div id="openMenu">
   <button id="openLocalFileBtn" class="secondary" onclick="openLocalFile()"></button>
   <button id="openFromGithubBtn" class="secondary" onclick="openFromGithub()"></button>
   <button id="openProjetoNodoBtn" class="secondary" onclick="openProjetoNodo()"></button>
@@ -1581,20 +1618,53 @@ if (button === 2) {
         const openBtn = document.getElementById("openBtn");
 const openMenu = document.getElementById("openMenu");
 
-openBtn.onclick = () => {
-  const rect = openBtn.getBoundingClientRect();
+function hideOpenMenu() {
+  openMenu.classList.remove('is-open');
+  openMenu.style.display = 'none';
+}
 
+function showOpenMenu() {
+  const rect = openBtn.getBoundingClientRect();
   openMenu.style.top = rect.bottom + 5 + "px";
   openMenu.style.left = rect.left + "px";
+  openMenu.style.display = 'flex';
+  openMenu.classList.add('is-open');
+}
 
-  openMenu.style.display =
-    openMenu.style.display === "flex" ? "none" : "flex";
+function resetInteractiveUI() {
+  codePanel.classList.remove('active');
+  codePanel.style.right = '';
+  codePanel.style.visibility = '';
+  codePanel.style.opacity = '';
+  codePanel.style.pointerEvents = '';
+  codeEditor.blur();
+  codeEditor.value = '';
+  document.getElementById('description-editor').value = '';
+  document.getElementById('file-type').value = 'js';
+  hideOpenMenu();
+  activeNode = null;
+}
+
+openBtn.onclick = () => {
+  if (openMenu.classList.contains('is-open')) {
+    hideOpenMenu();
+    return;
+  }
+
+  showOpenMenu();
 };
 
 document.addEventListener("click", e => {
   if (!openBtn.contains(e.target) && !openMenu.contains(e.target)) {
-    openMenu.style.display = "none";
+    hideOpenMenu();
   }
+});
+
+window.addEventListener('load', () => {
+  resetInteractiveUI();
+  window.requestAnimationFrame(() => {
+    document.body.classList.add('ui-ready');
+  });
 });
 
 function setSlidingPanelState(panel, isOpen) {
@@ -1689,7 +1759,11 @@ descriptionEditor.addEventListener('input', e => {
 });
 
         // Inicialização
+        resetInteractiveUI();
         resizeCanvas();
+        window.requestAnimationFrame(() => {
+            document.body.classList.add('ui-ready');
+        });
 
         // Exemplo inicial se vazio
         if(nodes.length === 0) {
@@ -1708,20 +1782,14 @@ __________
         }
 
 
-
-        function openLocalFile() {
-  openMenu.style.display = "none";
-  document.getElementById("fileInputشنبه").click();
-}
-
 // Correção no ID do input no HTML estava fileInput
 function openLocalFile() {
-    openMenu.style.display = "none";
+    hideOpenMenu();
     document.getElementById("fileInput").click();
 }
 
 async function openFromGithub() {
-  openMenu.style.display = "none";
+  hideOpenMenu();
 
   const url = prompt("Cole o link RAW do JSON do GitHub:");
   if (!url) return;
@@ -1740,7 +1808,7 @@ async function openFromGithub() {
 
 // ABRIR O NODE DO NODE
         async function openProjetoNodo() {
-  openMenu.style.display = "none";
+  hideOpenMenu();
 
   const NODO_JSON_URL = "https://raw.githubusercontent.com/versaodeluxe18/nodo/main/examples/save-nodo.json";
 
