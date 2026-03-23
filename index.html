@@ -470,13 +470,12 @@
  
 <script>
 /* ============================================================
-   NÓ-DO: MÓDULO DE INTEGRAÇÃO MOBILE E EVENTOS
+   NÓ-DO: MÓDULO DE INTEGRAÇÃO MOBILE E LAYOUT DINÂMICO
    ============================================================ */
 
 (() => {
-    // === ESTADO GLOBAL DO TOQUE ===
     const touchState = {
-        isRotated: false, // Define se a gambiarra do CSS de 90deg está ativa
+        isRotated: false,
         isDragging: false,
         dragTarget: null,
         offsetX: 0,
@@ -487,69 +486,111 @@
     const ctx = canvas.getContext('2d');
     const introOverlay = document.getElementById('intro-overlay');
 
-    // === 1. HANDLER DE COORDENADAS (Unificado e Corrigido para Rotação) ===
-    // Esta função desentorta o clique se a tela estiver girada 90deg
+    // === 1. INJEÇÃO DE LAYOUT MOBILE ===
+    function injectMobileLayout() {
+        if (document.getElementById('mobile-style-override')) return;
+
+        const style = document.createElement('style');
+        style.id = 'mobile-style-override';
+        style.innerHTML = `
+            /* Ajustes de Toolbar para dedos */
+            #toolbar { 
+                padding: 15px; 
+                gap: 15px; 
+                top: 5px; 
+                left: 5px;
+                flex-wrap: wrap;
+                max-width: 90vw;
+            }
+            button { 
+                padding: 12px 16px; 
+                font-size: 14px; 
+                min-height: 44px; /* Padrão Apple/Android para toque */
+            }
+            
+            /* Ajuste do Painel de Código para telas pequenas */
+            #code-panel { 
+                width: 85vw; 
+                right: -90vw; 
+            }
+            #code-panel.active { right: 0; }
+            
+            /* Melhoria na visibilidade do rodapé */
+            .instruction { 
+                font-size: 10px; 
+                background: rgba(30,30,30,0.8); 
+                padding: 2px 5px; 
+                border-radius: 3px;
+            }
+
+            /* Menu suspenso mobile */
+            #openMenu {
+                width: 280px;
+                top: 70px;
+            }
+        `;
+        document.head.appendChild(style);
+        console.log("NÓ-DO: Layout Mobile Injetado.");
+    }
+
+    // === 2. HANDLER DE COORDENADAS (Unificado) ===
     function getPointerPos(e, isRotated = false) {
         const rect = canvas.getBoundingClientRect();
         let clientX = e.touches ? e.touches[0].clientX : e.clientX;
         let clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        // Se a rotação CSS estiver ativa (Portrait segurando deitado)
         if (isRotated) {
             return {
-                x: clientY - rect.top, // O Y do sensor vira o X do Canvas
-                y: rect.right - clientX // O X invertido vira o Y do Canvas
+                x: clientY - rect.top,
+                y: rect.right - clientX
             };
         }
-
-        // Modo nativo (PC ou Paisagem nativa)
         return {
             x: clientX - rect.left,
             y: clientY - rect.top
         };
     }
 
-    // === 2. LÓGICA DE TOQUE UNIFICADA (MouseDown / TouchStart) ===
+    // === 3. LÓGICA DE TOQUE E CLIQUE NA BOLINHA AZUL ===
     function handlePointerDown(e) {
-        if (e.type === 'touchstart') e.preventDefault(); // Trava a tela mobile
+        // Não cancelamos o evento se for no menu ou painel
+        if (e.target.closest('#toolbar, #code-panel, #openMenu')) return;
+        
+        if (e.type === 'touchstart') e.preventDefault();
 
         touchState.isRotated = document.body.style.transform.includes("rotate(90deg)");
         const pos = getPointerPos(e, touchState.isRotated);
         const mx = pos.x;
         const my = pos.y;
 
-        // --- Verificação de Bolinha de Ordem (Prioridade Máxima) ---
-        const target = nodes.find(n => n.isPointInside(mx, my) || (n.isNovelo && n.isPointInside(mx, my)));
+        // Procura por nós ou novelos (priorizando a Bolinha de Ordem Azul)
+        const target = nodes.find(n => n.isPointInside(mx, my));
         if (target && target.isPointInsideOrderBadge(mx, my)) {
-            openOrderIndexEditor(target);
+            // Chama a função global definida no seu código principal
+            if (typeof openOrderIndexEditor === 'function') {
+                openOrderIndexEditor(target);
+            }
             return;
         }
-
     }
 
-    // Registrando os eventos no Canvas
+    // Eventos de Input
     canvas.addEventListener('mousedown', handlePointerDown);
     canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
-
-    // Registrando Move e Up (exemplo simplificado)
+    
     canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault(); // Impede a tela de balançar
-        const pos = getPointerPos(e, touchState.isRotated);
-        // Ex: handleDragging(pos.x, pos.y);
+        if (!e.target.closest('#code-panel, #toolbar')) {
+            e.preventDefault(); 
+        }
     }, { passive: false });
 
-    canvas.addEventListener('touchend', () => touchState.isDragging = false);
-
-
-    // === 3. LÓGICA DE INTRO DINÂMICA (Pede para Rotacionar) ===
+    // === 4. SISTEMA DE INTRO E DETECÇÃO ===
     let introFinished = false;
 
-    // Função para desbloquear a animação de introdução
     function runIntroAnimation() {
         if (introFinished) return;
         introFinished = true;
         
-        // Remove a mensagem de rotação se existir
         const rotationMsg = document.getElementById('rotation-msg');
         if (rotationMsg) rotationMsg.remove();
         
@@ -562,56 +603,48 @@
                 introOverlay.remove();
             }, { once: true });
         } else {
-            // Fallback caso a wordmark não esteja
             window.setTimeout(() => {
                 document.body.classList.remove('intro-active');
-                introOverlay.remove();
+                if (introOverlay) introOverlay.remove();
             }, 4600);
         }
     }
 
-    // Função para criar a mensagem de rotação
     function showRotationMessage() {
-        if (document.getElementById('rotation-msg')) return; // Já existe
+        if (document.getElementById('rotation-msg')) return;
         
         const msg = document.createElement('div');
         msg.id = 'rotation-msg';
         msg.style.cssText = `
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.8);
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            z-index: 2000;
-            font-family: 'Segoe UI', sans-serif;
-            text-align: center;
+            position: fixed; inset: 0; background: #1e1e1e; color: #fff;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 20px; z-index: 2000;
+            font-family: sans-serif; text-align: center; padding: 20px;
         `;
         msg.innerHTML = `
-            <span style="font-size: 60px;">🧶</span>
-            <span style="font-size: 20px;">Por favor, rotacione o celular</span>
-            <span style="color: #888;">NÓ-DO precisa do Modo Paisagem (Deitado)</span>
+            <div style="font-size: 50px; animation: pulse 2s infinite;">📱🔄</div>
+            <b style="font-size: 20px;">MODO PAISAGEM NECESSÁRIO</b>
+            <p style="color: #888;">Para mapear sua arquitetura, por favor deite o celular.</p>
+            <style>@keyframes pulse { 0% {transform: rotate(0deg)} 25% {transform: rotate(90deg)} 50% {transform: rotate(90deg)} 100% {transform: rotate(0deg)} }</style>
         `;
         document.body.appendChild(msg);
     }
 
-    // === 4. SISTEMA DE DETECÇÃO DE VIEWPORT E BLOQUEIO ===
     function checkViewportAndRunIntro() {
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         
-        // No celular e a tela está em pé (Portrait)
-        if (isMobile && window.innerHeight > window.innerWidth) {
-            showRotationMessage(); // Mostra mensagem, bloqueia intro
-        } else {
-            // PC ou Mobile Deitado (Paisagem): Libera intro
-            runIntroAnimation();
+        if (isMobile) {
+            injectMobileLayout(); // Ativa o novo layout injetado
+            
+            if (window.innerHeight > window.innerWidth) {
+                showRotationMessage();
+                return;
+            }
         }
+        
+        runIntroAnimation();
     }
 
-    // Executa ao carregar e quando a tela mudar de tamanho
     window.addEventListener('load', checkViewportAndRunIntro);
     window.addEventListener('resize', checkViewportAndRunIntro);
 
