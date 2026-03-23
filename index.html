@@ -663,7 +663,7 @@ let panStartY = 0;
             if (initialCards.length !== 2) return;
             if (hasCustomizedInitialLayout && !force) return;
 
-            const gap = Math.max(24, Math.min(72, canvas.width * 0.04));
+            const gap = Math.max(180, Math.min(300, canvas.width * 0.12));
             const totalWidth = initialCards.reduce((sum, node) => sum + node.width, 0) + gap;
             const startX = Math.max(24, (canvas.width - totalWidth) / 2);
             const centerY = (canvas.height / 2) - 12;
