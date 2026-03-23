@@ -509,7 +509,7 @@ body:not(.ui-ready) #code-panel {
     <input type="file" id="fileInput" style="display: none;" accept=".json" onchange="importProject(this)">
 
     <div class="instruction">
-       [Versão DEluxe]~[W.F.Fukuta]~[V: 1.0]
+       Versão DEluxe L W.F.Fukuta L V: 1.0 
     </div>
 
     <canvas id="gameMap"></canvas>
@@ -666,7 +666,7 @@ let panStartY = 0;
             const gap = Math.max(180, Math.min(300, canvas.width * 0.12));
             const totalWidth = initialCards.reduce((sum, node) => sum + node.width, 0) + gap;
             const startX = Math.max(24, (canvas.width - totalWidth) / 2);
-            const centerY = (canvas.height / 2) - 12;
+           const centerY = (canvas.height / 2) + 20;
             let currentX = startX;
 
             initialCards.forEach(node => {
