@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NÓ-DO</title>
     <style>
         :root {
@@ -16,6 +16,10 @@
             background-color: #1e1e1e;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             color: #ccc;
+            overflow: hidden; /* Impede qualquer tipo de scroll lateral ou vertical indesejado */
+            width: 100vw;
+            height: 100vh;
+            position: fixed; /* Evita que o mobile tente "rolar" ao tocar em elementos */
         }
 
         body.intro-active #toolbar,
@@ -119,36 +123,26 @@
 
         /* Painel Lateral de Código */
         #code-panel {
-            position: absolute;
-            top: 0;
-            right: min(calc(-100vw - 32px), -550px); /* Escondido inicialmente */
-            width: 500px;
-            height: 100vh;
-            background: #252526;
-            border-left: 1px solid #333;
-            visibility: hidden;
-            opacity: 0;
-            pointer-events: none;
-            transition:
-                right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1),
-                opacity 0.2s ease,
-                visibility 0s linear 0.3s;
-            display: flex;
-            flex-direction: column;
-            z-index: 20;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
-        }
+    position: fixed; /* Mude de absolute para fixed para garantir que ele prenda na tela */
+    top: 0;
+    right: -100%; /* Use porcentagem para garantir que saia da tela em qualquer dispositivo */
+    width: 85%; /* No mobile, 500px é muito largo, 85% da tela é melhor */
+    max-width: 500px; /* Mas no PC, ele não passará de 500px */
+    height: 100vh;
+    background: #252526;
+    border-left: 1px solid #333;
+    transition: all 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000; /* Garanta que fique acima de tudo */
+    visibility: hidden; /* Oculta totalmente para o navegador mobile */
+}
 
-        #code-panel.active {
-            right: 0;
-            visibility: visible;
-            opacity: 1;
-            pointer-events: auto;
-            transition:
-                right 0.3s cubic-bezier(0.075, 0.82, 0.165, 1),
-                opacity 0.2s ease,
-                visibility 0s linear 0s;
-        }
+
+#code-panel.active {
+    right: 0;
+    visibility: visible;
+}
 
         .panel-header {
             padding: 15px;
