@@ -7,6 +7,7 @@
         :root {
             --layout-accent: #0e639c;
             --intro-duration: 4200ms;
+            --mobile-breakpoint: 768px;
         }
 
         body {
@@ -30,12 +31,14 @@
             position: absolute;
             top: 10px;
             left: 10px;
+            max-width: calc(100vw - 20px);
             background: #252526;
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             z-index: 10;
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
             align-items: center;
         }
@@ -167,6 +170,8 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
+            right: 10px;
+            max-width: calc(100vw - 20px);
             color: #666;
             font-size: 12px;
             pointer-events: none;
@@ -357,6 +362,61 @@
     }
 }
 
+
+#code-panel,
+#devlog-panel,
+#novelo-panel {
+    max-width: 100vw;
+}
+
+@media (max-width: 768px) {
+    #toolbar {
+        right: 10px;
+        gap: 6px;
+        padding: 8px;
+        align-items: stretch;
+    }
+
+    #toolbar button {
+        min-height: 36px;
+        font-size: 12px;
+    }
+
+    #toolbar button:not(.icon-only) {
+        flex: 1 1 calc(50% - 6px);
+    }
+
+    #toolbar .icon-only {
+        flex: 0 0 auto;
+        min-width: 36px;
+    }
+
+    #toolbar .separator {
+        display: none;
+    }
+
+    #openMenu {
+        top: auto !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 20px);
+    }
+
+    #code-panel,
+    #devlog-panel,
+    #novelo-panel {
+        width: 100vw !important;
+        max-width: 100vw !important;
+    }
+
+    .instruction {
+        font-size: 11px;
+        bottom: 12px;
+    }
+}
+
     </style>
 
 
@@ -503,6 +563,7 @@
         const codePanel = document.getElementById('code-panel');
         const codeEditor = document.getElementById('code-editor');
         const panelTitle = document.getElementById('panel-title');
+        const MOBILE_BREAKPOINT = 768;
 
         // Estado da Aplicação
         // Alterado de 'let' para 'var' para garantir escopo global no window
@@ -1498,7 +1559,8 @@ if (button === 2) {
   // SE FOR NOVELO → ABRE PAINEL DE NOVELOS
   if (target.isNovelo) {
     const panel = document.getElementById("novelo-panel");
-    panel.style.right = "0px";
+    closeFloatingPanels(panel);
+    setSlidingPanelState(panel, true);
     return;
   }
 
@@ -1537,13 +1599,52 @@ document.addEventListener("click", e => {
   }
 });
 
+function getHiddenPanelOffset(panel) {
+  if (!panel) return "-420px";
+  const fallbackWidth = window.innerWidth <= MOBILE_BREAKPOINT
+    ? window.innerWidth
+    : Number.parseInt(panel.dataset.desktopWidth || panel.offsetWidth || 420, 10);
+  const panelWidth = Math.ceil(panel.getBoundingClientRect().width || panel.offsetWidth || fallbackWidth);
+  return `-${panelWidth}px`;
+}
 
+function setSlidingPanelState(panel, isOpen) {
+  if (!panel) return;
+  panel.dataset.open = isOpen ? 'true' : 'false';
+  panel.style.right = isOpen ? '0px' : getHiddenPanelOffset(panel);
+}
 
+function isSlidingPanelOpen(panel) {
+  return !!panel && panel.dataset.open === 'true';
+}
 
+function closeFloatingPanels(exceptPanel = null) {
+  const devlogPanel = document.getElementById('devlog-panel');
+  const noveloPanel = document.getElementById('novelo-panel');
+
+  if (exceptPanel !== codePanel && codePanel.classList.contains('active')) {
+    closePanel();
+  }
+
+  [devlogPanel, noveloPanel].forEach(panel => {
+    if (panel && panel !== exceptPanel && isSlidingPanelOpen(panel)) {
+      setSlidingPanelState(panel, false);
+    }
+  });
+}
+
+window.addEventListener('resize', () => {
+  [document.getElementById('devlog-panel'), document.getElementById('novelo-panel')].forEach(panel => {
+    if (panel && !isSlidingPanelOpen(panel)) {
+      setSlidingPanelState(panel, false);
+    }
+  });
+});
 
         // --- PAINEL DE CÓDIGO ---
 
      function openCodePanel(node) {
+    closeFloatingPanels(codePanel);
     activeNode = node;
     updatePanelTitle();
     codeEditor.value = node.code;
@@ -1713,7 +1814,7 @@ async function openFromGithub() {
   panel.innerHTML = `
     <div style="padding:15px;background:#333;display:flex;justify-content:space-between;align-items:center;">
       <strong>DEV LOG</strong>
-      <button style="background:none;color:#fff;font-size:20px;" onclick="document.getElementById('devlog-panel').style.right='-420px'">×</button>
+      <button style="background:none;color:#fff;font-size:20px;" onclick="window.closeDevLogPanel()">×</button>
     </div>
 
     <div style="padding:10px;display:flex;gap:8px;">
@@ -1746,6 +1847,8 @@ async function openFromGithub() {
   `;
 
   document.body.appendChild(panel);
+  panel.dataset.desktopWidth = "400";
+  setSlidingPanelState(panel, false);
 
   /* ---------- FUNÇÕES ---------- */
   window.renderDevLogs = function() {
@@ -1753,9 +1856,17 @@ async function openFromGithub() {
   }
 
   function toggleDevLog() {
-    panel.style.right = panel.style.right === "0px" ? "-420px" : "0px";
-    renderHistory();
+    const shouldOpen = !isSlidingPanelOpen(panel);
+    closeFloatingPanels(shouldOpen ? panel : null);
+    setSlidingPanelState(panel, shouldOpen);
+    if (shouldOpen) {
+      renderHistory();
+    }
   }
+
+  window.closeDevLogPanel = function () {
+    setSlidingPanelState(panel, false);
+  };
 
   function saveLog() {
     const text = document.getElementById("devlog-text").value.trim();
@@ -2112,7 +2223,7 @@ async function openFromGithub() {
     <div style="padding:15px;background:#333;display:flex;justify-content:space-between;">
       <strong>NOVELOS</strong>
       <button style="background:none;color:#fff;font-size:20px;"
-        onclick="document.getElementById('novelo-panel').style.right='-420px'">×</button>
+        onclick="window.closeNoveloPanel()">×</button>
     </div>
 
     <div style="padding:10px;">
@@ -2136,12 +2247,22 @@ async function openFromGithub() {
   `;
 
   document.body.appendChild(panel);
+  panel.dataset.desktopWidth = "400";
+  setSlidingPanelState(panel, false);
 
   /* ---------- FUNÇÕES ---------- */
   function toggleNoveloPanel() {
-    panel.style.right = panel.style.right === "0px" ? "-420px" : "0px";
-    renderNovelos();
+    const shouldOpen = !isSlidingPanelOpen(panel);
+    closeFloatingPanels(shouldOpen ? panel : null);
+    setSlidingPanelState(panel, shouldOpen);
+    if (shouldOpen) {
+      renderNovelos();
+    }
   }
+
+  window.closeNoveloPanel = function () {
+    setSlidingPanelState(panel, false);
+  };
 
   function renderNovelos() {
     const box = document.getElementById("novelo-list");
