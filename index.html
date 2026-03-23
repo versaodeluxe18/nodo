@@ -1160,7 +1160,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 }
 
        function isBodyRotated() {
-    return isRotated;
+    return Boolean(window.isRotated);
 }
 
        function clamp(value, min, max) {
