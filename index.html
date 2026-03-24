@@ -1363,7 +1363,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 }
 
        function handleCanvasTap(pointerX, pointerY, options = {}) {
-    const { shiftKey = false, preserveSelection = false } = options;
+    const { shiftKey = false, preserveSelection = false, openPanelForNode = false } = options;
     const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
 
@@ -1401,6 +1401,9 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
     removeOrderIndexEditor(false);
     removeEnterNoveloButton();
+    if (openPanelForNode) {
+        openCodePanel(target);
+    }
     draw();
 }
 
@@ -1591,7 +1594,8 @@ if (button === 2) {
     if (currentPointerContext?.type === 'node') {
         handleCanvasTap(pointerX, pointerY, {
             shiftKey: currentPointerContext.shiftKey,
-            preserveSelection: true
+            preserveSelection: true,
+            openPanelForNode: isTouchEvent && !currentPointerContext.shiftKey
         });
         return;
     }
