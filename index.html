@@ -601,6 +601,7 @@ body:not(.ui-ready) #code-panel {
         var novelos = []; // <--- AGORA GLOBAL DE VERDADE
         var devLogs = []; // <--- GLOBAL PARA LOGS
         var selectedNodes = [];
+        let pendingMobileLinkAction = null;
         let hasCustomizedInitialLayout = false;
         const Icons = {
             save: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11l3 3v13H5z"></path><path d="M8 4v6h8V4"></path><path d="M9 16h6"></path></svg>`,
@@ -946,6 +947,10 @@ connections: connections.map(c => ({
             }
         }
 
+        function isMobileLinkModeAvailable() {
+            return window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+        }
+
         function connectNodes() {
             if (selectedNodes.length === 2) {
                 const exists = connections.some(c =>
@@ -956,8 +961,12 @@ connections: connections.map(c => ({
                 if (!exists) {
                     connections.push({ from: selectedNodes[0], to: selectedNodes[1] });
                 }
+                pendingMobileLinkAction = null;
                 clearSelection();
                 draw();
+            } else if (isMobileLinkModeAvailable()) {
+                pendingMobileLinkAction = 'connect';
+                alert("Modo mobile ativado: toque em 2 cartões para LIGAR.");
             } else {
                 alert("Selecione exatamente 2 cartões para ligar o nó. (Shift + Clique).");
             }
@@ -972,8 +981,12 @@ connections: connections.map(c => ({
                 (c.from === selectedNodes[1] && c.to === selectedNodes[0])
             )
         );
+        pendingMobileLinkAction = null;
         clearSelection();
         draw();
+    } else if (isMobileLinkModeAvailable()) {
+        pendingMobileLinkAction = 'unlink';
+        alert("Modo mobile ativado: toque em 2 cartões para DESLIGAR.");
     } else {
         alert("Selecione exatamente 2 cartões para desligar o nó.");
     }
@@ -1378,7 +1391,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     if (!target) {
         removeOrderIndexEditor(false);
         removeEnterNoveloButton();
-        if (!shiftKey && !preserveSelection) {
+        if (!shiftKey && !preserveSelection && !pendingMobileLinkAction) {
             clearSelection();
             return;
         }
@@ -1387,7 +1400,18 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     }
 
     if (!preserveSelection) {
-        updateNodeSelection(target, shiftKey);
+        const shouldMultiSelect = shiftKey || Boolean(pendingMobileLinkAction);
+        updateNodeSelection(target, shouldMultiSelect);
+
+        if (pendingMobileLinkAction === 'connect' && selectedNodes.length === 2) {
+            connectNodes();
+            return;
+        }
+
+        if (pendingMobileLinkAction === 'unlink' && selectedNodes.length === 2) {
+            unlinkSelectedNodes();
+            return;
+        }
     }
 
     if (target.isNovelo) {
