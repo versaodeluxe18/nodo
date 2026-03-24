@@ -125,9 +125,9 @@
         #code-panel {
     position: fixed; /* Mude de absolute para fixed para garantir que ele prenda na tela */
     top: 0;
-    right: -100%; /* Use porcentagem para garantir que saia da tela em qualquer dispositivo */
-    width: 85%; /* No mobile, 500px é muito largo, 85% da tela é melhor */
-    max-width: 500px; /* Mas no PC, ele não passará de 500px */
+    right: -50%; /* Mantém o painel fora da tela antes de abrir */
+    width: 45%; /* Mantém o painel com menos da metade da largura da tela */
+    max-width: 500px; /* Limite no desktop */
     height: 100vh;
     background: #252526;
     border-left: 1px solid #333;
