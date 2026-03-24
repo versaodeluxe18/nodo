@@ -966,9 +966,9 @@ connections: connections.map(c => ({
                 draw();
             } else if (isMobileLinkModeAvailable()) {
                 pendingMobileLinkAction = 'connect';
-                alert("Modo mobile ativado: toque em 2 cartões para LIGAR.");
+                alert("Toque em dois cartões ao mesmo tempo para fazer a ligação do nó");
             } else {
-                alert("Selecione exatamente 2 cartões para ligar o nó. (Shift + Clique).");
+                alert("Selecione cartões usando SHIFT ou use o botão direito para fazer a ligação do nó.");
             }
         }
 
@@ -986,9 +986,9 @@ connections: connections.map(c => ({
         draw();
     } else if (isMobileLinkModeAvailable()) {
         pendingMobileLinkAction = 'unlink';
-        alert("Modo mobile ativado: toque em 2 cartões para DESLIGAR.");
+        alert("Toque em dois cartões ao mesmo tempo para desligar o nó");
     } else {
-        alert("Selecione exatamente 2 cartões para desligar o nó.");
+        alert("Selecione cartões usando SHIFT ou use o botão direito para desligar o nó");
     }
 }
 
