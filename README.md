@@ -4,9 +4,9 @@
 Ferramenta open-source para arquitetura de sistemas, escrita não-linear e organização de ideias.
 <br>
 
-<a href="[https://versaodeluxe18.github.io/nodo/](https://versaodeluxe18.github.io/nodo/)]">
+[<a href="[https://versaodeluxe18.github.io/nodo/](https://versaodeluxe18.github.io/nodo/)]">
   <img src="https://img.shields.io/badge/CRIE_O_SEU_PRIMEIRO_NÓ_COM_NÓDO-2ea44f?style=for-the-badge" alt="VISUALIZAR" width="500">
-</a>
+</a>](https://versaodeluxe18.github.io/nodo/)
 </div>
 
 <br><br>
