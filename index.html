@@ -1356,9 +1356,14 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 
         // --- RENDERIZAÇÃO ---
 
+        const GRID_SIZE = 40;
+
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid();
+            if (typeof window.drawGridReleaseEffects === 'function') {
+                window.drawGridReleaseEffects(ctx, GRID_SIZE);
+            }
 
             // Desenhar Conexões
             ctx.strokeStyle = '#666';
@@ -1392,14 +1397,13 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         function drawGrid() {
             ctx.strokeStyle = '#2e2e2e';
             ctx.lineWidth = 1;
-            const gridSize = 40;
 
             ctx.beginPath();
-            for(let x=0; x<canvas.width; x+=gridSize) {
+            for(let x=0; x<canvas.width; x+=GRID_SIZE) {
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
             }
-            for(let y=0; y<canvas.height; y+=gridSize) {
+            for(let y=0; y<canvas.height; y+=GRID_SIZE) {
                 ctx.moveTo(0, y);
                 ctx.lineTo(canvas.width, y);
             }
@@ -1731,6 +1735,13 @@ if (button === 2) {
     const expectedPointerType = isTouchEvent ? 'touch' : 'mouse';
     const shouldHandleTap = Boolean(pointerDownPos) && !pointerMoved && activePointerType === expectedPointerType;
     const currentPointerContext = pointerDownContext;
+    const releasedDragTarget = isDragging && dragTarget ? dragTarget : null;
+    const shouldPlayGridReleaseEffect = Boolean(
+        releasedDragTarget &&
+        pointerMoved &&
+        activePointerType === expectedPointerType &&
+        e.type !== 'touchcancel'
+    );
 
     isDragging = false;
     isPanning = false;
@@ -1741,6 +1752,10 @@ if (button === 2) {
     pointerDownPos = null;
     pointerMoved = false;
     pointerDownContext = null;
+
+    if (shouldPlayGridReleaseEffect && typeof window.playGridReleaseEffect === 'function') {
+        window.playGridReleaseEffect(pointerX, pointerY, releasedDragTarget);
+    }
 
     if (!shouldHandleTap || e.type === 'touchcancel') {
         return;
@@ -2250,6 +2265,167 @@ async function openFromGithub() {
 (function () {
 
   const effects = [];
+  const gridReleaseEffects = [];
+  const GRID_RELEASE_DURATION = 1150;
+  const GRID_RELEASE_COLOR = {
+    r: 0,
+    g: 180,
+    b: 255
+  };
+
+  function clamp01(value) {
+    return Math.min(Math.max(value, 0), 1);
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function colorWithAlpha(alpha) {
+    return `rgba(${GRID_RELEASE_COLOR.r}, ${GRID_RELEASE_COLOR.g}, ${GRID_RELEASE_COLOR.b}, ${alpha})`;
+  }
+
+  function roundToGrid(value, gridSize) {
+    return Math.round(value / gridSize) * gridSize;
+  }
+
+  function drawGlowingLine(ctx, x1, y1, x2, y2, alpha, width = 2) {
+    if (alpha <= 0) return;
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = colorWithAlpha(alpha);
+    ctx.lineWidth = width;
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = '#00b4ff';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGridOrb(ctx, x, y, radius, alpha) {
+    if (alpha <= 0) return;
+
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 4);
+    glow.addColorStop(0, colorWithAlpha(alpha));
+    glow.addColorStop(0.35, colorWithAlpha(alpha * 0.35));
+    glow.addColorStop(1, colorWithAlpha(0));
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = colorWithAlpha(alpha);
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#00b4ff';
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  window.playGridReleaseEffect = function (x, y, node = null) {
+    const now = performance.now();
+    gridReleaseEffects.push({
+      x,
+      y,
+      node,
+      startTime: now,
+      duration: GRID_RELEASE_DURATION,
+      seed: Math.random()
+    });
+
+    if (gridReleaseEffects.length > 8) {
+      gridReleaseEffects.splice(0, gridReleaseEffects.length - 8);
+    }
+
+    requestAnimationFrame(draw);
+  };
+
+  window.drawGridReleaseEffects = function (ctx, gridSize = 40) {
+    const now = performance.now();
+
+    for (let i = gridReleaseEffects.length - 1; i >= 0; i--) {
+      const effect = gridReleaseEffects[i];
+      const progress = clamp01((now - effect.startTime) / effect.duration);
+
+      if (progress >= 1) {
+        gridReleaseEffects.splice(i, 1);
+        continue;
+      }
+
+      const snapX = roundToGrid(effect.x, gridSize);
+      const snapY = roundToGrid(effect.y, gridSize);
+      const travelProgress = clamp01(progress / 0.28);
+      const spreadProgress = clamp01((progress - 0.18) / 0.72);
+      const fade = Math.pow(1 - progress, 1.35);
+      const easedTravel = easeInOutCubic(travelProgress);
+      const easedSpread = easeOutCubic(spreadProgress);
+      const orbX = effect.x + (snapX - effect.x) * easedTravel;
+      const orbY = effect.y + (snapY - effect.y) * easedTravel;
+      const maxRadius = Math.hypot(canvas.width, canvas.height) * 0.34;
+      const radius = easedSpread * maxRadius;
+      const gridXStart = Math.max(0, snapX - radius);
+      const gridXEnd = Math.min(canvas.width, snapX + radius);
+      const gridYStart = Math.max(0, snapY - radius);
+      const gridYEnd = Math.min(canvas.height, snapY + radius);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // Rastro curto da bolinha até encaixar na interseção mais próxima da grade.
+      drawGlowingLine(ctx, effect.x, effect.y, orbX, orbY, 0.55 * (1 - travelProgress) * fade, 3);
+
+      // Pulso que percorre os caminhos horizontais e verticais da grade.
+      for (let y = snapY - radius; y <= snapY + radius; y += gridSize) {
+        const gridY = roundToGrid(y, gridSize);
+        if (gridY < 0 || gridY > canvas.height) continue;
+        const distance = Math.abs(gridY - snapY);
+        const localAlpha = clamp01(1 - distance / Math.max(radius, 1)) * fade;
+        drawGlowingLine(ctx, gridXStart, gridY, gridXEnd, gridY, localAlpha * 0.42, 1.8);
+      }
+
+      for (let x = snapX - radius; x <= snapX + radius; x += gridSize) {
+        const gridX = roundToGrid(x, gridSize);
+        if (gridX < 0 || gridX > canvas.width) continue;
+        const distance = Math.abs(gridX - snapX);
+        const localAlpha = clamp01(1 - distance / Math.max(radius, 1)) * fade;
+        drawGlowingLine(ctx, gridX, gridYStart, gridX, gridYEnd, localAlpha * 0.42, 1.8);
+      }
+
+      // Frentes de propagação com pequenas bolinhas azuis caminhando pelos eixos.
+      const frontAlpha = Math.sin(spreadProgress * Math.PI) * 0.85 * fade;
+      if (spreadProgress > 0) {
+        const front = easedSpread * maxRadius;
+        const frontPoints = [
+          [snapX + front, snapY],
+          [snapX - front, snapY],
+          [snapX, snapY + front],
+          [snapX, snapY - front]
+        ];
+
+        frontPoints.forEach(([frontX, frontY]) => {
+          if (frontX < 0 || frontX > canvas.width || frontY < 0 || frontY > canvas.height) return;
+          drawGridOrb(ctx, frontX, frontY, 4 + 5 * fade, frontAlpha);
+        });
+      }
+
+      const orbAlpha = progress < 0.72 ? 1 - progress * 0.55 : fade;
+      drawGridOrb(ctx, orbX, orbY, 5 + 9 * easedSpread, orbAlpha);
+      ctx.restore();
+    }
+  };
 
   window.playLinkEffect = function (from, to, type = "link") {
     effects.push({ from, to, type, t: 0 });
@@ -2351,7 +2527,7 @@ async function openFromGithub() {
   window.draw = function () {
     originalDraw();
     drawEffects(ctx);
-    if (effects.length) requestAnimationFrame(draw);
+    if (effects.length || gridReleaseEffects.length) requestAnimationFrame(draw);
   };
 
 })();
