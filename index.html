@@ -2266,12 +2266,18 @@ async function openFromGithub() {
 
   const effects = [];
   const gridReleaseEffects = [];
-  const GRID_RELEASE_DURATION = 1150;
+  const GRID_RELEASE_DURATION = 1400;
+  const GRID_RELEASE_GRID_SIZE = 40;
+  const GRID_RELEASE_MAX_ACTIVE = 4;
+  const GRID_RELEASE_WALKERS = 5;
+  const GRID_RELEASE_STEPS = 9;
+  const GRID_RELEASE_TRAIL_SEGMENTS = 4;
   const GRID_RELEASE_COLOR = {
     r: 0,
     g: 180,
     b: 255
   };
+  let gridReleaseFramePending = false;
 
   function clamp01(value) {
     return Math.min(Math.max(value, 0), 1);
@@ -2279,12 +2285,6 @@ async function openFromGithub() {
 
   function easeOutCubic(t) {
     return 1 - Math.pow(1 - t, 3);
-  }
-
-  function easeInOutCubic(t) {
-    return t < 0.5
-      ? 4 * t * t * t
-      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
   function colorWithAlpha(alpha) {
@@ -2295,62 +2295,148 @@ async function openFromGithub() {
     return Math.round(value / gridSize) * gridSize;
   }
 
+  function createSeededRandom(seed) {
+    let state = Math.floor(seed * 2147483647) || 1;
+    return function () {
+      state = (state * 48271) % 2147483647;
+      return state / 2147483647;
+    };
+  }
+
   function drawGlowingLine(ctx, x1, y1, x2, y2, alpha, width = 2) {
     if (alpha <= 0) return;
 
-    ctx.save();
     ctx.lineCap = 'round';
     ctx.strokeStyle = colorWithAlpha(alpha);
     ctx.lineWidth = width;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = 10;
     ctx.shadowColor = '#00b4ff';
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
     ctx.stroke();
-    ctx.restore();
   }
 
   function drawGridOrb(ctx, x, y, radius, alpha) {
     if (alpha <= 0) return;
 
-    const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 4);
-    glow.addColorStop(0, colorWithAlpha(alpha));
-    glow.addColorStop(0.35, colorWithAlpha(alpha * 0.35));
-    glow.addColorStop(1, colorWithAlpha(0));
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = glow;
+    ctx.fillStyle = colorWithAlpha(alpha * 0.28);
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = '#00b4ff';
     ctx.beginPath();
-    ctx.arc(x, y, radius * 4, 0, Math.PI * 2);
+    ctx.arc(x, y, radius * 2.3, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = colorWithAlpha(alpha);
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = '#00b4ff';
+    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
+  }
+
+  function scheduleGridReleaseFrame() {
+    if (gridReleaseFramePending) return;
+    gridReleaseFramePending = true;
+    requestAnimationFrame(() => {
+      gridReleaseFramePending = false;
+      draw();
+    });
+  }
+
+  function createGridWalkers(x, y, gridSize, seed) {
+    const random = createSeededRandom(seed);
+    const start = {
+      x: roundToGrid(x, gridSize),
+      y: roundToGrid(y, gridSize)
+    };
+    const directions = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 }
+    ];
+    const maxX = Math.ceil(canvas.width / gridSize) * gridSize;
+    const maxY = Math.ceil(canvas.height / gridSize) * gridSize;
+
+    return Array.from({ length: GRID_RELEASE_WALKERS }, (_, walkerIndex) => {
+      const path = [{ ...start }];
+      let lastDirection = directions[Math.floor(random() * directions.length)];
+
+      for (let step = 0; step < GRID_RELEASE_STEPS; step++) {
+        const current = path[path.length - 1];
+        let options = directions.filter(direction => {
+          const nextX = current.x + direction.x * gridSize;
+          const nextY = current.y + direction.y * gridSize;
+          const isReverse = direction.x === -lastDirection.x && direction.y === -lastDirection.y;
+          return !isReverse && nextX >= 0 && nextX <= maxX && nextY >= 0 && nextY <= maxY;
+        });
+
+        if (!options.length) options = directions;
+        const direction = options[Math.floor(random() * options.length)];
+        lastDirection = direction;
+        path.push({
+          x: Math.min(Math.max(current.x + direction.x * gridSize, 0), maxX),
+          y: Math.min(Math.max(current.y + direction.y * gridSize, 0), maxY)
+        });
+      }
+
+      return {
+        path,
+        delay: walkerIndex * 0.045 + random() * 0.08,
+        speed: 0.82 + random() * 0.28,
+        radius: 3.8 + random() * 2.2
+      };
+    });
+  }
+
+  function drawGridWalker(ctx, walker, progress, fade) {
+    const localProgress = clamp01((progress - walker.delay) * walker.speed);
+    if (localProgress <= 0) return;
+
+    const path = walker.path;
+    const pathPosition = localProgress * (path.length - 1);
+    const currentIndex = Math.min(Math.floor(pathPosition), path.length - 2);
+    const segmentProgress = pathPosition - currentIndex;
+    const from = path[currentIndex];
+    const to = path[currentIndex + 1];
+    const head = {
+      x: from.x + (to.x - from.x) * easeOutCubic(segmentProgress),
+      y: from.y + (to.y - from.y) * easeOutCubic(segmentProgress)
+    };
+    const startSegment = Math.max(0, currentIndex - GRID_RELEASE_TRAIL_SEGMENTS + 1);
+
+    for (let segment = startSegment; segment < currentIndex; segment++) {
+      const p1 = path[segment];
+      const p2 = path[segment + 1];
+      const age = currentIndex - segment;
+      const alpha = fade * clamp01(1 - age / (GRID_RELEASE_TRAIL_SEGMENTS + 1)) * 0.48;
+      drawGlowingLine(ctx, p1.x, p1.y, p2.x, p2.y, alpha, 2.2);
+    }
+
+    const partialAgeAlpha = fade * 0.72;
+    drawGlowingLine(ctx, from.x, from.y, head.x, head.y, partialAgeAlpha, 2.8);
+    drawGridOrb(ctx, head.x, head.y, walker.radius, fade * (1 - localProgress * 0.25));
   }
 
   window.playGridReleaseEffect = function (x, y, node = null) {
     const now = performance.now();
+    const gridSize = typeof GRID_SIZE === 'number' ? GRID_SIZE : GRID_RELEASE_GRID_SIZE;
+    const seed = Math.random();
     gridReleaseEffects.push({
       x,
       y,
       node,
       startTime: now,
       duration: GRID_RELEASE_DURATION,
-      seed: Math.random()
+      seed,
+      walkers: createGridWalkers(x, y, gridSize, seed)
     });
 
-    if (gridReleaseEffects.length > 8) {
-      gridReleaseEffects.splice(0, gridReleaseEffects.length - 8);
+    if (gridReleaseEffects.length > GRID_RELEASE_MAX_ACTIVE) {
+      gridReleaseEffects.splice(0, gridReleaseEffects.length - GRID_RELEASE_MAX_ACTIVE);
     }
 
-    requestAnimationFrame(draw);
+    scheduleGridReleaseFrame();
   };
 
   window.drawGridReleaseEffects = function (ctx, gridSize = 40) {
@@ -2365,64 +2451,23 @@ async function openFromGithub() {
         continue;
       }
 
+      const fade = Math.pow(1 - progress, 1.6);
       const snapX = roundToGrid(effect.x, gridSize);
       const snapY = roundToGrid(effect.y, gridSize);
-      const travelProgress = clamp01(progress / 0.28);
-      const spreadProgress = clamp01((progress - 0.18) / 0.72);
-      const fade = Math.pow(1 - progress, 1.35);
-      const easedTravel = easeInOutCubic(travelProgress);
-      const easedSpread = easeOutCubic(spreadProgress);
-      const orbX = effect.x + (snapX - effect.x) * easedTravel;
-      const orbY = effect.y + (snapY - effect.y) * easedTravel;
-      const maxRadius = Math.hypot(canvas.width, canvas.height) * 0.34;
-      const radius = easedSpread * maxRadius;
-      const gridXStart = Math.max(0, snapX - radius);
-      const gridXEnd = Math.min(canvas.width, snapX + radius);
-      const gridYStart = Math.max(0, snapY - radius);
-      const gridYEnd = Math.min(canvas.height, snapY + radius);
+      const travelProgress = clamp01(progress / 0.2);
+      const orbX = effect.x + (snapX - effect.x) * easeOutCubic(travelProgress);
+      const orbY = effect.y + (snapY - effect.y) * easeOutCubic(travelProgress);
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Rastro curto da bolinha até encaixar na interseção mais próxima da grade.
-      drawGlowingLine(ctx, effect.x, effect.y, orbX, orbY, 0.55 * (1 - travelProgress) * fade, 3);
+      drawGlowingLine(ctx, effect.x, effect.y, orbX, orbY, 0.38 * (1 - travelProgress) * fade, 2.4);
+      effect.walkers.forEach(walker => drawGridWalker(ctx, walker, progress, fade));
 
-      // Pulso que percorre os caminhos horizontais e verticais da grade.
-      for (let y = snapY - radius; y <= snapY + radius; y += gridSize) {
-        const gridY = roundToGrid(y, gridSize);
-        if (gridY < 0 || gridY > canvas.height) continue;
-        const distance = Math.abs(gridY - snapY);
-        const localAlpha = clamp01(1 - distance / Math.max(radius, 1)) * fade;
-        drawGlowingLine(ctx, gridXStart, gridY, gridXEnd, gridY, localAlpha * 0.42, 1.8);
+      if (travelProgress < 1) {
+        drawGridOrb(ctx, orbX, orbY, 4.5, 0.8 * fade);
       }
 
-      for (let x = snapX - radius; x <= snapX + radius; x += gridSize) {
-        const gridX = roundToGrid(x, gridSize);
-        if (gridX < 0 || gridX > canvas.width) continue;
-        const distance = Math.abs(gridX - snapX);
-        const localAlpha = clamp01(1 - distance / Math.max(radius, 1)) * fade;
-        drawGlowingLine(ctx, gridX, gridYStart, gridX, gridYEnd, localAlpha * 0.42, 1.8);
-      }
-
-      // Frentes de propagação com pequenas bolinhas azuis caminhando pelos eixos.
-      const frontAlpha = Math.sin(spreadProgress * Math.PI) * 0.85 * fade;
-      if (spreadProgress > 0) {
-        const front = easedSpread * maxRadius;
-        const frontPoints = [
-          [snapX + front, snapY],
-          [snapX - front, snapY],
-          [snapX, snapY + front],
-          [snapX, snapY - front]
-        ];
-
-        frontPoints.forEach(([frontX, frontY]) => {
-          if (frontX < 0 || frontX > canvas.width || frontY < 0 || frontY > canvas.height) return;
-          drawGridOrb(ctx, frontX, frontY, 4 + 5 * fade, frontAlpha);
-        });
-      }
-
-      const orbAlpha = progress < 0.72 ? 1 - progress * 0.55 : fade;
-      drawGridOrb(ctx, orbX, orbY, 5 + 9 * easedSpread, orbAlpha);
       ctx.restore();
     }
   };
@@ -2527,7 +2572,7 @@ async function openFromGithub() {
   window.draw = function () {
     originalDraw();
     drawEffects(ctx);
-    if (effects.length || gridReleaseEffects.length) requestAnimationFrame(draw);
+    if (effects.length || gridReleaseEffects.length) scheduleGridReleaseFrame();
   };
 
 })();
