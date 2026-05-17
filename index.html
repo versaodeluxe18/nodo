@@ -561,6 +561,139 @@ body:not(.ui-ready) #code-panel {
  
 
     <script>
+        const NodoSound = (() => {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) {
+                return {
+                    playClick() {},
+                    playButton() {},
+                    playIntro() {},
+                    unlock() {}
+                };
+            }
+
+            let audioContext = null;
+            let introPlayed = false;
+            let introPending = false;
+
+            const masterVolume = 0.22;
+
+            function getContext() {
+                if (!audioContext) {
+                    audioContext = new AudioContextClass();
+                }
+                return audioContext;
+            }
+
+            function createTone({ frequency, startTime, duration, type = 'sine', gain = 0.12, attack = 0.012, release = 0.12 }) {
+                const context = getContext();
+                const oscillator = context.createOscillator();
+                const volume = context.createGain();
+                const filter = context.createBiquadFilter();
+                const endTime = startTime + duration;
+
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, startTime);
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1800, startTime);
+                filter.Q.setValueAtTime(0.7, startTime);
+
+                volume.gain.setValueAtTime(0.0001, startTime);
+                volume.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * masterVolume), startTime + attack);
+                volume.gain.exponentialRampToValueAtTime(0.0001, Math.max(startTime + attack + 0.01, endTime - release));
+                volume.gain.exponentialRampToValueAtTime(0.0001, endTime);
+
+                oscillator.connect(filter);
+                filter.connect(volume);
+                volume.connect(context.destination);
+
+                oscillator.start(startTime);
+                oscillator.stop(endTime + 0.04);
+            }
+
+            function playPattern(pattern) {
+                const context = getContext();
+                const play = () => {
+                    const now = context.currentTime + 0.012;
+                    pattern.forEach(note => createTone({ ...note, startTime: now + (note.delay || 0) }));
+                };
+
+                if (context.state === 'suspended') {
+                    context.resume().then(play).catch(() => {});
+                    return;
+                }
+
+                play();
+            }
+
+            function playClick() {
+                playPattern([
+                    { frequency: 720, duration: 0.07, type: 'triangle', gain: 0.07, attack: 0.006, release: 0.05 }
+                ]);
+            }
+
+            function playButton() {
+                playPattern([
+                    { frequency: 520, duration: 0.08, type: 'sine', gain: 0.08, attack: 0.008, release: 0.06 },
+                    { frequency: 780, delay: 0.035, duration: 0.09, type: 'triangle', gain: 0.055, attack: 0.008, release: 0.07 }
+                ]);
+            }
+
+            function playIntro() {
+                if (introPlayed) return;
+                const context = getContext();
+                introPending = context.state === 'suspended';
+
+                const play = () => {
+                    if (introPlayed) return;
+                    introPending = false;
+                    introPlayed = true;
+                    playPattern([
+                        { frequency: 392.0, duration: 0.48, type: 'sine', gain: 0.13, attack: 0.025, release: 0.2 },
+                        { frequency: 587.33, delay: 0.46, duration: 0.62, type: 'sine', gain: 0.12, attack: 0.025, release: 0.26 },
+                        { frequency: 196.0, delay: 0, duration: 0.92, type: 'triangle', gain: 0.035, attack: 0.04, release: 0.42 }
+                    ]);
+                };
+
+                if (context.state === 'suspended') {
+                    context.resume().then(play).catch(() => {});
+                    return;
+                }
+
+                play();
+            }
+
+            function unlock() {
+                const context = getContext();
+                const afterUnlock = () => {
+                    if (introPending && !introPlayed) {
+                        playIntro();
+                    }
+                };
+
+                if (context.state === 'suspended') {
+                    context.resume().then(afterUnlock).catch(() => {});
+                    return;
+                }
+
+                afterUnlock();
+            }
+
+            ['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
+                window.addEventListener(eventName, unlock, { capture: true, passive: true });
+            });
+
+            document.addEventListener('click', event => {
+                const button = event.target?.closest?.('button');
+                if (!button || button.disabled) return;
+                playButton();
+            }, true);
+
+            return { playClick, playButton, playIntro, unlock };
+        })();
+    </script>
+
+    <script>
         (() => {
             const introOverlay = document.getElementById('intro-overlay');
             const introWordmark = introOverlay?.querySelector('.intro-wordmark');
@@ -577,10 +710,12 @@ body:not(.ui-ready) #code-panel {
             };
 
             if (prefersReducedMotion) {
+                NodoSound.playIntro();
                 finishIntro();
                 return;
             }
 
+            NodoSound.playIntro();
             document.body.classList.add('intro-active');
             introWordmark.addEventListener('animationend', finishIntro, { once: true });
             window.setTimeout(finishIntro, 4600);
@@ -1376,6 +1511,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
 }
 
        function handleCanvasTap(pointerX, pointerY, options = {}) {
+    NodoSound.playClick();
     const { shiftKey = false, preserveSelection = false, openPanelForNode = false } = options;
     const isInsideActiveNovelo = window.isNoveloActive && window.isNoveloActive();
     const badgeTarget = [...nodes].reverse().find(node => node.isPointInsideOrderBadge(pointerX, pointerY));
