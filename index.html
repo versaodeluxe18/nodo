@@ -1169,16 +1169,18 @@ function toggleConnection(a, b) {
       )
     );
 
-    // feedback visual de remoção
+    // feedback visual e sonoro de remoção
     playLinkEffect(a, b, "unlink");
 
   } else {
     // ===== LIGAR =====
     connections.push({ from: a, to: b });
 
-    // feedback visual de criação
+    // feedback visual e sonoro de criação
     playLinkEffect(a, b, "link");
   }
+
+  NodoSound.playButton();
 }
 
 
