@@ -1119,6 +1119,7 @@ connections: connections.map(c => ({
 
                 if (!exists) {
                     connections.push({ from: selectedNodes[0], to: selectedNodes[1] });
+                    triggerConnectionGridEffects(selectedNodes[0], selectedNodes[1]);
                 }
                 pendingMobileLinkAction = null;
                 clearSelection();
@@ -1152,6 +1153,17 @@ connections: connections.map(c => ({
 }
 
 
+function triggerConnectionGridEffects(a, b) {
+  if (typeof window.playGridReleaseEffect !== 'function') return;
+
+  const nodesPair = [a, b].filter(Boolean);
+  nodesPair.forEach(node => {
+    const centerX = node.x + node.width / 2;
+    const centerY = node.y + node.height / 2;
+    window.playGridReleaseEffect(centerX, centerY, node);
+  });
+}
+
 function hasConnection(a, b) {
   return connections.some(c =>
     (c.from === a && c.to === b) ||
@@ -1178,6 +1190,7 @@ function toggleConnection(a, b) {
 
     // feedback visual e sonoro de criação
     playLinkEffect(a, b, "link");
+    triggerConnectionGridEffects(a, b);
   }
 
   NodoSound.playButton();
