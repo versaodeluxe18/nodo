@@ -725,6 +725,26 @@ body:not(.ui-ready) #code-panel {
     <script>
         const canvas = document.getElementById('gameMap');
         const ctx = canvas.getContext('2d');
+        let isLiveMoving = false;
+        let drawFramePending = false;
+        let cachedGridCanvas = null;
+        let cachedGridWidth = 0;
+        let cachedGridHeight = 0;
+
+        function invalidateGridCache() {
+            cachedGridCanvas = null;
+            cachedGridWidth = 0;
+            cachedGridHeight = 0;
+        }
+
+        function requestDraw() {
+            if (drawFramePending) return;
+            drawFramePending = true;
+            window.requestAnimationFrame(() => {
+                drawFramePending = false;
+                draw();
+            });
+        }
         canvas.addEventListener("contextmenu", e => e.preventDefault());
         const codePanel = document.getElementById('code-panel');
         const codeEditor = document.getElementById('code-editor');
@@ -785,6 +805,7 @@ let panStartY = 0;
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            invalidateGridCache();
             centerInitialCards();
             draw();
         }
@@ -900,9 +921,11 @@ let panStartY = 0;
 
 
             draw(ctx, isSelected) {
-                // Sombra para profundidade
-                ctx.shadowColor = 'rgba(0,0,0,0.5)';
-                ctx.shadowBlur = 15;
+                // Sombra para profundidade. Durante arrasto/pan, o blur é desativado
+                // porque recalcular sombras em todos os frames causa travamentos no canvas.
+                const shouldDrawShadow = !isLiveMoving;
+                ctx.shadowColor = shouldDrawShadow ? 'rgba(0,0,0,0.42)' : 'transparent';
+                ctx.shadowBlur = shouldDrawShadow ? (isSelected ? 10 : 7) : 0;
 
                 // Fundo do Nó
                 ctx.fillStyle = isSelected ? '#094771' : this.color; // Azul mais escuro quando selecionado
@@ -914,6 +937,7 @@ let panStartY = 0;
                 ctx.strokeRect(this.x, this.y, this.width, this.height);
 
                 ctx.shadowBlur = 0; // Reset sombra
+                ctx.shadowColor = 'transparent';
 
                 // Cabeçalho (Barra superior do nó)
                 ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -1395,19 +1419,29 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
         }
 
         function drawGrid() {
-            ctx.strokeStyle = '#2e2e2e';
-            ctx.lineWidth = 1;
+            if (!cachedGridCanvas || cachedGridWidth !== canvas.width || cachedGridHeight !== canvas.height) {
+                cachedGridCanvas = document.createElement('canvas');
+                cachedGridCanvas.width = canvas.width;
+                cachedGridCanvas.height = canvas.height;
+                cachedGridWidth = canvas.width;
+                cachedGridHeight = canvas.height;
 
-            ctx.beginPath();
-            for(let x=0; x<canvas.width; x+=GRID_SIZE) {
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
+                const gridCtx = cachedGridCanvas.getContext('2d');
+                gridCtx.strokeStyle = '#2e2e2e';
+                gridCtx.lineWidth = 1;
+                gridCtx.beginPath();
+                for (let x = 0; x < cachedGridCanvas.width; x += GRID_SIZE) {
+                    gridCtx.moveTo(x, 0);
+                    gridCtx.lineTo(x, cachedGridCanvas.height);
+                }
+                for (let y = 0; y < cachedGridCanvas.height; y += GRID_SIZE) {
+                    gridCtx.moveTo(0, y);
+                    gridCtx.lineTo(cachedGridCanvas.width, y);
+                }
+                gridCtx.stroke();
             }
-            for(let y=0; y<canvas.height; y+=GRID_SIZE) {
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-            }
-            ctx.stroke();
+
+            ctx.drawImage(cachedGridCanvas, 0, 0);
         }
 
         // --- INTERAÇÃO (MOUSE / TOUCH) ---
@@ -1586,6 +1620,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     pointerDownContext = null;
     isDragging = false;
     isPanning = false;
+    isLiveMoving = false;
     dragTarget = null;
     offsetX = 0;
     offsetY = 0;
@@ -1690,7 +1725,8 @@ if (button === 2) {
         panStartX = pointerX;
         panStartY = pointerY;
 
-        draw();
+        isLiveMoving = true;
+        requestDraw();
         return;
     }
 
@@ -1720,7 +1756,8 @@ if (button === 2) {
             dragTarget.y = clampedPosition.y;
         }
 
-        draw();
+        isLiveMoving = true;
+        requestDraw();
     }
 }
 
@@ -1745,6 +1782,7 @@ if (button === 2) {
 
     isDragging = false;
     isPanning = false;
+    isLiveMoving = false;
     dragTarget = null;
     offsetX = 0;
     offsetY = 0;
@@ -1758,6 +1796,7 @@ if (button === 2) {
     }
 
     if (!shouldHandleTap || e.type === 'touchcancel') {
+        requestDraw();
         return;
     }
 
@@ -2306,11 +2345,21 @@ async function openFromGithub() {
   function drawGlowingLine(ctx, x1, y1, x2, y2, alpha, width = 2) {
     if (alpha <= 0) return;
 
+    // Evita shadowBlur no canvas: ele é caro em animações e causava engasgos.
+    // O brilho é simulado com uma passada larga translúcida + uma linha central.
     ctx.lineCap = 'round';
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
+    ctx.strokeStyle = colorWithAlpha(alpha * 0.24);
+    ctx.lineWidth = width + 6;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
     ctx.strokeStyle = colorWithAlpha(alpha);
     ctx.lineWidth = width;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#00b4ff';
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
@@ -2320,15 +2369,20 @@ async function openFromGithub() {
   function drawGridOrb(ctx, x, y, radius, alpha) {
     if (alpha <= 0) return;
 
-    ctx.fillStyle = colorWithAlpha(alpha * 0.28);
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = '#00b4ff';
+    // Mesmo princípio das linhas: brilho barato sem filtro de blur.
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = colorWithAlpha(alpha * 0.22);
     ctx.beginPath();
-    ctx.arc(x, y, radius * 2.3, 0, Math.PI * 2);
+    ctx.arc(x, y, radius * 2.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = colorWithAlpha(alpha * 0.42);
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 1.55, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = colorWithAlpha(alpha);
-    ctx.shadowBlur = 10;
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
@@ -2505,17 +2559,24 @@ async function openFromGithub() {
         const t = easeOutBack(e.t);
 
         // Linha principal (aparece rápido)
-        ctx.strokeStyle = `rgba(0, 180, 255, ${1 - e.t})`;
-        ctx.lineWidth = 5;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#00b4ff";
+        const linkAlpha = 1 - e.t;
+        const currentX = x1 + (x2 - x1) * Math.min(t, 1);
+        const currentY = y1 + (y2 - y1) * Math.min(t, 1);
 
+        ctx.shadowBlur = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.strokeStyle = `rgba(0, 180, 255, ${linkAlpha * 0.22})`;
+        ctx.lineWidth = 11;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
-        ctx.lineTo(
-          x1 + (x2 - x1) * Math.min(t, 1),
-          y1 + (y2 - y1) * Math.min(t, 1)
-        );
+        ctx.lineTo(currentX, currentY);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(0, 180, 255, ${linkAlpha})`;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(currentX, currentY);
         ctx.stroke();
 
         // Flash de fixação nos nós
