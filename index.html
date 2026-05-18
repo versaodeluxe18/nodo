@@ -794,8 +794,11 @@ let panStartY = 0;
         let activeOrderIndexEditor = null;
 
         const ORDER_BADGE_STYLE = {
-            fill: '#0e639c',
-            text: '#ffffff',
+            fill: '#7a8594',
+            fillTop: '#a1a9b5',
+            fillBottom: '#687483',
+            border: '#b4bcc8',
+            text: '#f2f4f7',
             diameter: 24,
             horizontalPadding: 10,
             font: 'bold 12px Segoe UI'
@@ -904,9 +907,15 @@ let panStartY = 0;
                 const badge = this.getOrderBadgeRect(ctx);
                 const text = this.getOrderBadgeText();
 
-                ctx.fillStyle = ORDER_BADGE_STYLE.fill;
+                const gradient = ctx.createLinearGradient(0, badge.y, 0, badge.y + badge.height);
+                gradient.addColorStop(0, ORDER_BADGE_STYLE.fillTop);
+                gradient.addColorStop(1, ORDER_BADGE_STYLE.fillBottom);
+                ctx.fillStyle = gradient;
                 drawRoundedRect(ctx, badge.x, badge.y, badge.width, badge.height, badge.radius);
                 ctx.fill();
+                ctx.strokeStyle = ORDER_BADGE_STYLE.border;
+                ctx.lineWidth = 1;
+                ctx.stroke();
 
                 if (!text) return;
 
@@ -1353,8 +1362,8 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
     input.style.position = 'absolute';
     input.style.padding = '0 10px';
     input.style.borderRadius = `${ORDER_BADGE_STYLE.diameter / 2}px`;
-    input.style.border = `1px solid ${ORDER_BADGE_STYLE.fill}`;
-    input.style.background = ORDER_BADGE_STYLE.fill;
+    input.style.border = `1px solid ${ORDER_BADGE_STYLE.border}`;
+    input.style.background = `linear-gradient(180deg, ${ORDER_BADGE_STYLE.fillTop} 0%, ${ORDER_BADGE_STYLE.fillBottom} 100%)`;
     input.style.color = ORDER_BADGE_STYLE.text;
     input.style.font = ORDER_BADGE_STYLE.font;
     input.style.textAlign = 'center';
@@ -2327,9 +2336,9 @@ async function openFromGithub() {
   const GRID_RELEASE_STEPS = 9;
   const GRID_RELEASE_TRAIL_SEGMENTS = 4;
   const GRID_RELEASE_COLOR = {
-    r: 14,
-    g: 99,
-    b: 156
+    r: 122,
+    g: 134,
+    b: 148
   };
   let gridReleaseFramePending = false;
 
@@ -2580,14 +2589,14 @@ async function openFromGithub() {
 
         ctx.shadowBlur = 0;
         ctx.shadowColor = 'transparent';
-        ctx.strokeStyle = `rgba(0, 180, 255, ${linkAlpha * 0.22})`;
+        ctx.strokeStyle = `rgba(122, 134, 148, ${linkAlpha * 0.2})`;
         ctx.lineWidth = 11;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(currentX, currentY);
         ctx.stroke();
 
-        ctx.strokeStyle = `rgba(0, 180, 255, ${linkAlpha})`;
+        ctx.strokeStyle = `rgba(122, 134, 148, ${linkAlpha * 0.9})`;
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -2598,7 +2607,7 @@ async function openFromGithub() {
         if (e.t > 0.4) {
           const pulse = (1 - e.t) * 12;
 
-          ctx.strokeStyle = `rgba(0,180,255,${1 - e.t})`;
+          ctx.strokeStyle = `rgba(122,134,148,${(1 - e.t) * 0.85})`;
           ctx.lineWidth = 2;
 
           ctx.beginPath();
