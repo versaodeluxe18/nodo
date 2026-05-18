@@ -794,11 +794,11 @@ let panStartY = 0;
         let activeOrderIndexEditor = null;
 
         const ORDER_BADGE_STYLE = {
-            fill: '#7a8594',
-            fillTop: '#a1a9b5',
-            fillBottom: '#687483',
-            border: '#b4bcc8',
-            text: '#f2f4f7',
+            fill: '#3c3c3c',
+            fillTop: '#3c3c3c',
+            fillBottom: '#3c3c3c',
+            border: '#555',
+            text: '#fff',
             diameter: 24,
             horizontalPadding: 10,
             font: 'bold 12px Segoe UI'
@@ -1414,7 +1414,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
             }
 
             // Desenhar Conexões
-            ctx.strokeStyle = '#666';
+            ctx.strokeStyle = 'rgba(14, 99, 156, 0.75)';
             ctx.lineWidth = 2;
             connections.forEach(conn => {
                 const startX = conn.from.x + conn.from.width / 2;
@@ -2336,9 +2336,9 @@ async function openFromGithub() {
   const GRID_RELEASE_STEPS = 9;
   const GRID_RELEASE_TRAIL_SEGMENTS = 4;
   const GRID_RELEASE_COLOR = {
-    r: 122,
-    g: 134,
-    b: 148
+    r: 14,
+    g: 99,
+    b: 156
   };
   let gridReleaseFramePending = false;
 
@@ -2589,14 +2589,14 @@ async function openFromGithub() {
 
         ctx.shadowBlur = 0;
         ctx.shadowColor = 'transparent';
-        ctx.strokeStyle = `rgba(122, 134, 148, ${linkAlpha * 0.2})`;
+        ctx.strokeStyle = `rgba(14, 99, 156, ${linkAlpha * 0.22})`;
         ctx.lineWidth = 11;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(currentX, currentY);
         ctx.stroke();
 
-        ctx.strokeStyle = `rgba(122, 134, 148, ${linkAlpha * 0.9})`;
+        ctx.strokeStyle = `rgba(0, 122, 204, ${linkAlpha * 0.95})`;
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -2607,7 +2607,7 @@ async function openFromGithub() {
         if (e.t > 0.4) {
           const pulse = (1 - e.t) * 12;
 
-          ctx.strokeStyle = `rgba(122,134,148,${(1 - e.t) * 0.85})`;
+          ctx.strokeStyle = `rgba(0,122,204,${(1 - e.t) * 0.9})`;
           ctx.lineWidth = 2;
 
           ctx.beginPath();
