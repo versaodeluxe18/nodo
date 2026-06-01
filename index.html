@@ -2337,9 +2337,9 @@ async function openFromGithub() {
   const GRID_RELEASE_STEPS = 9;
   const GRID_RELEASE_TRAIL_SEGMENTS = 4;
   const GRID_RELEASE_COLOR = {
-    r: 14,
-    g: 99,
-    b: 156
+    r: 242,
+    g: 184,
+    b: 75
   };
   let gridReleaseFramePending = false;
 
@@ -2590,14 +2590,14 @@ async function openFromGithub() {
 
         ctx.shadowBlur = 0;
         ctx.shadowColor = 'transparent';
-        ctx.strokeStyle = `rgba(14, 99, 156, ${linkAlpha * 0.22})`;
+        ctx.strokeStyle = `rgba(242, 184, 75, ${linkAlpha * 0.18})`;
         ctx.lineWidth = 11;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(currentX, currentY);
         ctx.stroke();
 
-        ctx.strokeStyle = `rgba(0, 122, 204, ${linkAlpha * 0.95})`;
+        ctx.strokeStyle = `rgba(242, 184, 75, ${linkAlpha * 0.9})`;
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -2608,7 +2608,7 @@ async function openFromGithub() {
         if (e.t > 0.4) {
           const pulse = (1 - e.t) * 12;
 
-          ctx.strokeStyle = `rgba(0,122,204,${(1 - e.t) * 0.9})`;
+          ctx.strokeStyle = `rgba(242,184,75,${(1 - e.t) * 0.85})`;
           ctx.lineWidth = 2;
 
           ctx.beginPath();
