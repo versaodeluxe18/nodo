@@ -3382,37 +3382,126 @@ async function openFromGithub() {
     return;
   }
 
-  /* 2. ESTILOS VISUAIS (Mantidos) */
+  /* 2. ESTILOS VISUAIS */
   const style = document.createElement('style');
   style.innerHTML = `
-    .save-layout-pending {
-      background-color: #f1c40f !important; /* Amarelo: Layout */
-      color: #000 !important;
+    #saveBtn {
+      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
     }
-    .save-structure-pending {
-      background-color: #2ecc71 !important; /* Verde: Estrutura/Dados */
-      color: #000 !important;
+    #saveBtn.save-layout-pending {
+      background-color: #b89b45 !important; /* Amarelo suave: movimentação/posição */
+      color: #1e1e1e !important;
+      box-shadow: 0 0 0 1px rgba(232, 196, 93, 0.2), 0 3px 10px rgba(0,0,0,0.22);
+    }
+    #saveBtn.save-layout-pending:hover {
+      background-color: #c8aa50 !important;
+    }
+    #saveBtn.save-structure-pending {
+      background-color: #a94b4b !important; /* Vermelho contido: cartões/nós alterados */
+      color: #fff !important;
+      box-shadow: 0 0 0 1px rgba(210, 92, 92, 0.18), 0 3px 10px rgba(0,0,0,0.24);
+    }
+    #saveBtn.save-structure-pending:hover {
+      background-color: #ba5656 !important;
+    }
+    #saveBtn.save-confirmed {
+      background-color: #4f8061 !important; /* Verde suave: alteração importante salva */
+      color: #fff !important;
+      box-shadow: 0 0 0 1px rgba(103, 166, 124, 0.18), 0 3px 10px rgba(0,0,0,0.22);
+    }
+    #saveBtn.save-confirmed:hover {
+      background-color: #5b8f6e !important;
     }
   `;
   document.head.appendChild(style);
 
-  let state = null; // null | layout | structure
+  let state = null; // null | layout | structure | saved
+
+  function applyState(nextState) {
+    state = nextState;
+    saveBtn.classList.remove('save-layout-pending', 'save-structure-pending', 'save-confirmed');
+
+    if (state === 'layout') {
+      saveBtn.classList.add('save-layout-pending');
+      saveBtn.title = 'Salvar projeto — posições alteradas';
+      saveBtn.setAttribute('aria-label', 'Salvar projeto — posições alteradas');
+      return;
+    }
+
+    if (state === 'structure') {
+      saveBtn.classList.add('save-structure-pending');
+      saveBtn.title = 'Salvar projeto — cartões ou nós alterados';
+      saveBtn.setAttribute('aria-label', 'Salvar projeto — cartões ou nós alterados');
+      return;
+    }
+
+    if (state === 'saved') {
+      saveBtn.classList.add('save-confirmed');
+      saveBtn.title = 'Projeto salvo';
+      saveBtn.setAttribute('aria-label', 'Projeto salvo');
+      return;
+    }
+
+    saveBtn.title = 'Salvar projeto';
+    saveBtn.setAttribute('aria-label', 'Salvar projeto');
+  }
 
   function reset() {
-    state = null;
-    saveBtn.classList.remove('save-layout-pending', 'save-structure-pending');
+    applyState(null);
+  }
+
+  function confirmSaved() {
+    applyState('saved');
   }
 
   function markLayout() {
-    if (state === 'structure') return; // Estrutura tem prioridade
-    state = 'layout';
-    saveBtn.classList.add('save-layout-pending');
+    if (state === 'structure') return; // Alterações em dados têm prioridade visual
+    applyState('layout');
   }
 
   function markStructure() {
-    state = 'structure';
-    saveBtn.classList.remove('save-layout-pending');
-    saveBtn.classList.add('save-structure-pending');
+    applyState('structure');
+  }
+
+  function getStructureSignature() {
+    try {
+      const safeNodes = (window.nodes || nodes || []).map(n => ({
+        id: n.id,
+        label: n.label,
+        type: n.type,
+        description: n.description,
+        code: n.code,
+        orderIndex: n.orderIndex,
+        isNovelo: n.isNovelo,
+        noveloId: n.noveloId
+      }));
+      const safeConnections = (window.connections || connections || []).map(c => ({
+        from: c.from?.id,
+        to: c.to?.id
+      }));
+      return JSON.stringify({ nodes: safeNodes, connections: safeConnections });
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function snapshotNodePositions() {
+    try {
+      return new Map((window.nodes || nodes || []).map(node => [node.id, { x: node.x, y: node.y }]));
+    } catch (error) {
+      return new Map();
+    }
+  }
+
+  function didNodePositionChange(snapshot) {
+    try {
+      return (window.nodes || nodes || []).some(node => {
+        const previous = snapshot.get(node.id);
+        return previous && (previous.x !== node.x || previous.y !== node.y);
+      });
+    } catch (error) {
+      return false;
+    }
   }
 
   /* 3. INTERCEPTAÇÃO DE FUNÇÕES (Mecanismo Principal)
@@ -3431,51 +3520,51 @@ async function openFromGithub() {
     if (typeof window[fnName] === 'function') {
       const original = window[fnName];
       window[fnName] = function (...args) {
+        const before = getStructureSignature();
         const result = original.apply(this, args);
-        markStructure(); // Marca como alterado
+        const after = getStructureSignature();
+        if (before !== after) {
+          markStructure();
+        }
         return result;
       };
     }
   });
 
   /* 4. MONITORAMENTO DE INPUTS (Editor de Código/Descrição) */
-  document.addEventListener('input', (e) => {
+  function handleEditorChange(e) {
     if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) {
        // Ignora input de arquivo
        if (e.target.type === 'file') return;
        markStructure();
     }
-  });
+  }
 
-  /* 5. MONITORAMENTO DE CANVAS (Mudanças de Posição/Layout) */
+  document.addEventListener('input', handleEditorChange);
+  document.addEventListener('change', handleEditorChange);
+
+  /* 5. MONITORAMENTO DE CANVAS (Mudanças reais de posição dos nós) */
   const canvas = document.getElementById('gameMap') || document.querySelector('canvas');
   if (canvas) {
-    let startX = 0, startY = 0;
-    const getPrimaryPointer = (e) => {
-      if (e.touches && e.touches.length > 0) return e.touches[0];
-      if (e.changedTouches && e.changedTouches.length > 0) return e.changedTouches[0];
-      return e;
-    };
+    let positionSnapshot = null;
+
     const captureStartPosition = (e) => {
       if (e.type.startsWith('touch')) {
         e.preventDefault();
       }
-      const pointer = getPrimaryPointer(e);
-      startX = pointer.clientX;
-      startY = pointer.clientY;
+      positionSnapshot = snapshotNodePositions();
     };
+
     const markCanvasLayoutChange = (e) => {
       if (e.type.startsWith('touch')) {
         e.preventDefault();
       }
-      const pointer = getPrimaryPointer(e);
-      const dx = Math.abs(pointer.clientX - startX);
-      const dy = Math.abs(pointer.clientY - startY);
-      // Se moveu mais que 5 pixels, considera alteração de layout
-      if (dx > 5 || dy > 5) {
+      if (positionSnapshot && didNodePositionChange(positionSnapshot)) {
         markLayout();
       }
+      positionSnapshot = null;
     };
+
     canvas.addEventListener('mousedown', captureStartPosition);
     canvas.addEventListener('touchstart', captureStartPosition, { passive: false });
     canvas.addEventListener('mouseup', markCanvasLayoutChange);
@@ -3489,8 +3578,15 @@ async function openFromGithub() {
   if (typeof window.exportProject === 'function') {
     const origExport = window.exportProject;
     window.exportProject = function (...args) {
+      const stateBeforeSave = state;
       origExport.apply(this, args);
-      setTimeout(reset, 200); // Reseta visualmente após ação
+      setTimeout(() => {
+        if (stateBeforeSave === 'structure') {
+          confirmSaved();
+          return;
+        }
+        reset();
+      }, 200);
     };
   }
 
@@ -3506,8 +3602,13 @@ async function openFromGithub() {
   // Tecla Delete/Backspace detectada globalmente
   document.addEventListener('keydown', e => {
     if (e.key === 'Delete' || e.key === 'Backspace') {
-       // Pequeno delay para garantir que algo foi deletado
-       setTimeout(markStructure, 50);
+       const before = getStructureSignature();
+       // Pequeno delay para garantir que uma exclusão real já tenha atualizado os nós/conexões
+       setTimeout(() => {
+         if (before !== getStructureSignature()) {
+           markStructure();
+         }
+       }, 50);
     }
   });
 
