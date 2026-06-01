@@ -725,6 +725,7 @@ body:not(.ui-ready) #code-panel {
     <script>
         const canvas = document.getElementById('gameMap');
         const ctx = canvas.getContext('2d');
+        const CONNECTION_LINE_COLOR = 'rgba(242, 184, 75, 0.82)';
         let isLiveMoving = false;
         let drawFramePending = false;
         let cachedGridCanvas = null;
@@ -1414,7 +1415,7 @@ function drawMultilineText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 3) 
             }
 
             // Desenhar Conexões
-            ctx.strokeStyle = 'rgba(14, 99, 156, 0.75)';
+            ctx.strokeStyle = CONNECTION_LINE_COLOR;
             ctx.lineWidth = 2;
             connections.forEach(conn => {
                 const startX = conn.from.x + conn.from.width / 2;
