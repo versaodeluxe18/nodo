@@ -96,6 +96,54 @@
 
         button:hover { background: #1177bb; }
 
+        .connection-action {
+            border: 1px solid rgba(121, 199, 255, 0.24);
+            border-radius: 999px;
+            background: linear-gradient(180deg, rgba(42, 42, 44, 0.88), rgba(31, 31, 33, 0.92));
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+            color: #f5f8fa;
+            letter-spacing: 0.01em;
+            transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .connection-action--link {
+            border-color: rgba(14, 159, 234, 0.38);
+            background: linear-gradient(180deg, rgba(14, 99, 156, 0.34), rgba(31, 31, 33, 0.94));
+            color: #c9edff;
+        }
+
+        .connection-action--unlink {
+            border-color: rgba(242, 184, 75, 0.34);
+            background: linear-gradient(180deg, rgba(120, 76, 34, 0.28), rgba(31, 31, 33, 0.94));
+            color: #ffe4b7;
+        }
+
+        .connection-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 22px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        }
+
+        .connection-action--link:hover {
+            border-color: rgba(121, 199, 255, 0.58);
+            background: linear-gradient(180deg, rgba(14, 159, 234, 0.42), rgba(14, 99, 156, 0.28));
+            color: #ffffff;
+        }
+
+        .connection-action--unlink:hover {
+            border-color: rgba(242, 184, 75, 0.54);
+            background: linear-gradient(180deg, rgba(165, 105, 45, 0.36), rgba(84, 56, 35, 0.34));
+            color: #ffffff;
+        }
+
+        .connection-action:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(14, 159, 234, 0.18), 0 10px 22px rgba(0, 0, 0, 0.28);
+        }
+
+        .connection-action--unlink:focus-visible {
+            box-shadow: 0 0 0 3px rgba(242, 184, 75, 0.18), 0 10px 22px rgba(0, 0, 0, 0.28);
+        }
+
         button.secondary { background: #3c3c3c; }
         button.secondary:hover { background: #4c4c4c; }
 
@@ -664,8 +712,8 @@ body:not(.ui-ready) #code-panel {
 
     <div id="toolbar">
         <button id="addNodeBtn" onclick="addNode()">+ NOVO CARTÃO</button>
-        <button id="connectBtn" class="secondary" onclick="connectNodes()">LIGAR</button>
-        <button id="unlinkBtn" class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
+        <button id="connectBtn" class="connection-action connection-action--link" onclick="connectNodes()">Ligar</button>
+        <button id="unlinkBtn" class="connection-action connection-action--unlink" onclick="unlinkSelectedNodes()">Desligar</button>
 
 
         <div class="separator"></div>
