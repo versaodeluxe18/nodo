@@ -250,6 +250,14 @@
     animation: introWordmarkInOut var(--intro-duration) ease forwards;
 }
 
+.file-preloader:not(.is-active) .intro-wordmark,
+.file-preloader:not(.is-active) .intro-bracket,
+.file-preloader:not(.is-active) .intro-word,
+.file-preloader:not(.is-active) .intro-tilde,
+.file-preloader:not(.is-active) .file-preloader__opening-shell {
+    animation-play-state: paused;
+}
+
 .file-preloader__opening-shell {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1043,7 +1051,9 @@ body:not(.ui-ready) #code-panel {
             const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             let progress = 0;
             let hideTimer = null;
+            let soundTimer = null;
             let shownAt = 0;
+            const soundDelay = prefersReducedMotion ? 0 : 520;
 
             function restartIntroAnimation() {
                 const animatedItems = overlay?.querySelectorAll('.intro-wordmark, .intro-bracket, .intro-word, .intro-tilde, .file-preloader__opening-shell');
@@ -1100,29 +1110,45 @@ body:not(.ui-ready) #code-panel {
             function stopAutoProgress() {}
             function startAutoProgress() {}
 
+            function clearSoundTimer() {
+                if (!soundTimer) return;
+                window.clearTimeout(soundTimer);
+                soundTimer = null;
+            }
+
+            function playProjectOpenWhenAnimationIsVisible() {
+                clearSoundTimer();
+                soundTimer = window.setTimeout(() => {
+                    soundTimer = null;
+                    NodoSound.playProjectOpen();
+                }, soundDelay);
+            }
+
             function show(message = 'Abrindo projeto...', fileName = message) {
                 if (!overlay) return;
                 if (hideTimer) {
                     window.clearTimeout(hideTimer);
                     hideTimer = null;
                 }
-                shownAt = performance.now();
+                clearSoundTimer();
                 setOpeningFileName(fileName);
                 setProgress(0, message);
                 overlay.removeAttribute('hidden');
                 overlay.setAttribute('aria-hidden', 'false');
                 restartIntroAnimation();
-                NodoSound.playProjectOpen();
                 window.requestAnimationFrame(() => {
+                    shownAt = performance.now();
                     overlay.classList.add('is-active');
                     setProgress(8, message);
                     startAutoProgress();
+                    playProjectOpenWhenAnimationIsVisible();
                 });
             }
 
             function hide() {
                 if (!overlay) return;
                 stopAutoProgress();
+                clearSoundTimer();
                 overlay.classList.remove('is-active');
                 overlay.setAttribute('aria-hidden', 'true');
                 hideTimer = window.setTimeout(() => overlay.setAttribute('hidden', ''), 260);
@@ -1131,7 +1157,7 @@ body:not(.ui-ready) #code-panel {
             function finish(message = 'Projeto aberto') {
                 stopAutoProgress();
                 setProgress(100, message);
-                const elapsed = performance.now() - shownAt;
+                const elapsed = shownAt ? performance.now() - shownAt : 0;
                 const introDuration = prefersReducedMotion ? 120 : 4200;
                 const outroDelay = Math.max(120, introDuration - elapsed);
                 return new Promise(resolve => {
