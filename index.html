@@ -215,6 +215,128 @@
     pointer-events: none;
 }
 
+.file-preloader {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at center, rgba(30, 30, 30, 0.92) 0%, rgba(30, 30, 30, 0.98) 70%);
+    z-index: 2200;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 220ms ease, visibility 220ms ease;
+}
+
+.file-preloader.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.file-preloader__content {
+    display: grid;
+    justify-items: center;
+    gap: clamp(0.9rem, 2vw, 1.35rem);
+    transform: translateY(8px) scale(0.98);
+    transition: transform 260ms ease;
+}
+
+.file-preloader.is-active .file-preloader__content {
+    transform: translateY(0) scale(1);
+}
+
+.file-preloader .intro-wordmark {
+    opacity: 1;
+    animation: filePreloaderWordmarkIn 680ms ease forwards;
+}
+
+.file-preloader .intro-bracket.left {
+    animation: revealBracketLeft 1600ms ease-in-out infinite alternate;
+}
+
+.file-preloader .intro-bracket.right {
+    animation: revealBracketRight 1600ms ease-in-out infinite alternate;
+}
+
+.file-preloader .intro-word,
+.file-preloader .intro-tilde {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+    animation: filePreloaderTextPulse 1800ms ease-in-out infinite;
+}
+
+.file-preloader__bar-shell {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.28rem;
+    width: clamp(8.5rem, 26vw, 18rem);
+    color: var(--layout-accent);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+    font-weight: 700;
+    text-shadow: 0 0 18px rgba(14, 99, 156, 0.35);
+    overflow: hidden;
+    animation: filePreloaderBarOpen 760ms cubic-bezier(.22,.9,.24,1) forwards;
+}
+
+.file-preloader__track {
+    position: relative;
+    height: 0.42em;
+    min-width: 0;
+    border: 1px solid rgba(14, 159, 234, 0.48);
+    background: rgba(14, 99, 156, 0.12);
+    box-shadow: 0 0 18px rgba(14, 99, 156, 0.18) inset;
+    overflow: hidden;
+}
+
+.file-preloader__bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(14, 99, 156, 0.9), #79c7ff, rgba(14, 99, 156, 0.9));
+    box-shadow: 0 0 18px rgba(121, 199, 255, 0.55);
+    transition: width 240ms ease;
+}
+
+.file-preloader__bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.32), transparent);
+    animation: filePreloaderScan 920ms linear infinite;
+}
+
+.file-preloader__status {
+    color: #c7d3dc;
+    font: 600 12px 'Segoe UI', Tahoma, sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+@keyframes filePreloaderWordmarkIn {
+    0% { opacity: 0; transform: scale(0.72); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes filePreloaderTextPulse {
+    0%, 100% { text-shadow: 0 0 18px rgba(14, 99, 156, 0.32); }
+    50% { text-shadow: 0 0 32px rgba(121, 199, 255, 0.55); }
+}
+
+@keyframes filePreloaderBarOpen {
+    0% { width: 2.2rem; opacity: 0; }
+    20% { opacity: 1; }
+    100% { width: clamp(8.5rem, 26vw, 18rem); opacity: 1; }
+}
+
+@keyframes filePreloaderScan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
 .intro-wordmark {
     display: flex;
     align-items: center;
@@ -359,6 +481,11 @@
     .intro-bracket,
     .intro-word,
     .intro-tilde,
+    .file-preloader,
+    .file-preloader__content,
+    .file-preloader__bar-shell,
+    .file-preloader__bar,
+    .file-preloader__bar::after,
     .menu-modal,
     .menu-modal__inner,
     .card-launch-ghost {
@@ -662,6 +789,32 @@ body:not(.ui-ready) #code-panel {
         </div>
     </div>
 
+    <div id="file-preloader" class="file-preloader" aria-live="polite" aria-hidden="true" hidden>
+        <div class="file-preloader__content">
+            <div class="intro-wordmark" aria-label="NÓ DO">
+                <div class="intro-group" aria-label="NÓ">
+                    <span class="intro-bracket left">[</span>
+                    <span class="intro-word">NÓ</span>
+                    <span class="intro-bracket right">]</span>
+                </div>
+                <span class="intro-tilde">~</span>
+                <div class="intro-group" aria-label="DO">
+                    <span class="intro-bracket left">[</span>
+                    <span class="intro-word">DO</span>
+                    <span class="intro-bracket right">]</span>
+                </div>
+            </div>
+            <div class="file-preloader__bar-shell" aria-hidden="true">
+                <span>[</span>
+                <span class="file-preloader__track">
+                    <span id="file-preloader-bar" class="file-preloader__bar"></span>
+                </span>
+                <span>]</span>
+            </div>
+            <div id="file-preloader-status" class="file-preloader__status">Carregando arquivos...</div>
+        </div>
+    </div>
+
     <div id="toolbar">
         <button id="addNodeBtn" onclick="addNode()" aria-label="Novo cartão">+ CARTÃO</button>
         <button id="connectBtn" class="secondary" onclick="connectNodes()">ON</button>
@@ -902,6 +1055,142 @@ body:not(.ui-ready) #code-panel {
             introWordmark.addEventListener('animationend', finishIntro, { once: true });
             window.setTimeout(finishIntro, 4600);
         })();
+    </script>
+
+    <script>
+        const FilePreloader = (() => {
+            const overlay = document.getElementById('file-preloader');
+            const bar = document.getElementById('file-preloader-bar');
+            const status = document.getElementById('file-preloader-status');
+            let progress = 0;
+            let autoTimer = null;
+            let hideTimer = null;
+
+            function setProgress(value, message) {
+                progress = Math.max(0, Math.min(100, value));
+                if (bar) bar.style.width = `${progress}%`;
+                if (status && message) status.textContent = message;
+            }
+
+            function stopAutoProgress() {
+                if (!autoTimer) return;
+                window.clearInterval(autoTimer);
+                autoTimer = null;
+            }
+
+            function startAutoProgress() {
+                stopAutoProgress();
+                autoTimer = window.setInterval(() => {
+                    if (progress >= 88) return;
+                    const step = progress < 45 ? 4 : 1.5;
+                    setProgress(progress + step);
+                }, 180);
+            }
+
+            function show(message = 'Carregando arquivos...') {
+                if (!overlay) return;
+                if (hideTimer) {
+                    window.clearTimeout(hideTimer);
+                    hideTimer = null;
+                }
+                setProgress(0, message);
+                overlay.removeAttribute('hidden');
+                overlay.setAttribute('aria-hidden', 'false');
+                window.requestAnimationFrame(() => {
+                    overlay.classList.add('is-active');
+                    setProgress(8, message);
+                    startAutoProgress();
+                });
+            }
+
+            function hide() {
+                if (!overlay) return;
+                stopAutoProgress();
+                overlay.classList.remove('is-active');
+                overlay.setAttribute('aria-hidden', 'true');
+                hideTimer = window.setTimeout(() => overlay.setAttribute('hidden', ''), 260);
+            }
+
+            function finish(message = 'Arquivos carregados') {
+                stopAutoProgress();
+                setProgress(100, message);
+                return new Promise(resolve => {
+                    window.setTimeout(() => {
+                        hide();
+                        resolve();
+                    }, 560);
+                });
+            }
+
+            function fail(message = 'Erro ao carregar arquivo') {
+                stopAutoProgress();
+                setProgress(100, message);
+                window.setTimeout(hide, 720);
+            }
+
+            return { show, setProgress, finish, fail };
+        })();
+
+        function readProjectFileWithPreloader(file, onComplete, onFinally) {
+            FilePreloader.show(`Carregando ${file.name}...`);
+
+            const reader = new FileReader();
+            reader.onprogress = event => {
+                if (!event.lengthComputable) return;
+                const fileProgress = 12 + (event.loaded / event.total) * 68;
+                FilePreloader.setProgress(fileProgress, `Lendo ${file.name}...`);
+            };
+            reader.onload = async event => {
+                try {
+                    FilePreloader.setProgress(86, 'Montando cartões...');
+                    const data = JSON.parse(event.target.result);
+                    onComplete(data);
+                    await FilePreloader.finish('Projeto carregado');
+                } catch (err) {
+                    FilePreloader.fail('Arquivo inválido');
+                    console.error(err);
+                    alert('Erro ao carregar arquivo: Formato inválido.');
+                } finally {
+                    if (typeof onFinally === 'function') onFinally();
+                }
+            };
+            reader.onerror = () => {
+                FilePreloader.fail('Erro ao ler arquivo');
+                alert('Erro ao ler arquivo.');
+                if (typeof onFinally === 'function') onFinally();
+            };
+            reader.readAsText(file);
+        }
+
+        async function fetchProjectTextWithPreloader(url, message) {
+            FilePreloader.show(message);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Erro ao baixar arquivo');
+
+            const total = Number(response.headers.get('content-length'));
+            if (!response.body || !Number.isFinite(total) || total <= 0) {
+                const text = await response.text();
+                FilePreloader.setProgress(82, 'Arquivo recebido...');
+                return text;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let loaded = 0;
+            let text = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                loaded += value.length;
+                text += decoder.decode(value, { stream: true });
+                FilePreloader.setProgress(12 + (loaded / total) * 68, 'Baixando arquivos...');
+            }
+
+            text += decoder.decode();
+            FilePreloader.setProgress(82, 'Arquivo recebido...');
+            return text;
+        }
     </script>
 
     <script>
@@ -1214,23 +1503,11 @@ connections: connections.map(c => ({
             const file = inputElement.files[0];
             if (!file) return;
 
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-
-                    loadProjectData(data);
-                    alert("Projeto carregado com sucesso!");
-
-                } catch (err) {
-                    alert("Erro ao carregar arquivo: Formato inválido.");
-                    console.error(err);
-                }
-                // Limpar o input para permitir carregar o mesmo arquivo novamente se necessário
+            readProjectFileWithPreloader(file, data => {
+                loadProjectData(data);
+            }, () => {
                 inputElement.value = '';
-            };
-            reader.readAsText(file);
+            });
         }
 
 
@@ -2390,12 +2667,13 @@ async function openFromGithub() {
   if (!url) return;
 
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Erro ao baixar arquivo");
-
-    const data = await res.json();
+    const text = await fetchProjectTextWithPreloader(url, "Carregando arquivo do GitHub...");
+    FilePreloader.setProgress(88, "Montando projeto...");
+    const data = JSON.parse(text);
     loadProjectData(data);
+    await FilePreloader.finish("Projeto carregado");
   } catch (err) {
+    FilePreloader.fail("Erro ao abrir projeto");
     alert("Erro ao abrir projeto do GitHub");
     console.error(err);
   }
@@ -2408,13 +2686,14 @@ async function openFromGithub() {
   const NODO_JSON_URL = "https://raw.githubusercontent.com/versaodeluxe18/nodo/main/examples/save-nodo.json";
 
   try {
-    const res = await fetch(NODO_JSON_URL);
-    if (!res.ok) throw new Error("Erro ao carregar Projeto Nó-do");
-
-    const data = await res.json();
+    const text = await fetchProjectTextWithPreloader(NODO_JSON_URL, "Carregando Projeto Nó-do...");
+    FilePreloader.setProgress(88, "Montando Projeto Nó-do...");
+    const data = JSON.parse(text);
     loadProjectData(data);
+    await FilePreloader.finish("Projeto Nó-do carregado");
 
   } catch (err) {
+    FilePreloader.fail("Erro ao carregar Projeto Nó-do");
     alert("Não foi possível carregar o Projeto Nó-do");
     console.error(err);
   }
@@ -2614,19 +2893,13 @@ async function openFromGithub() {
     const file = input.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-          const data = JSON.parse(e.target.result);
-          // Chama a função centralizada que limpa e popula as variáveis globais
-          loadProjectData(data);
-          renderHistory();
-      } catch(err) {
-          console.error(err);
-          alert("Erro ao importar arquivo.");
-      }
-    };
-    reader.readAsText(file);
+    readProjectFileWithPreloader(file, data => {
+      // Chama a função centralizada que limpa e popula as variáveis globais
+      loadProjectData(data);
+      renderHistory();
+    }, () => {
+      input.value = '';
+    });
   };
 
 })();
