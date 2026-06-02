@@ -1418,14 +1418,16 @@ connections: connections.map(c => ({
 
         function connectNodes() {
             if (selectedNodes.length === 2) {
+                const [fromNode, toNode] = selectedNodes;
                 const exists = connections.some(c =>
-                    (c.from === selectedNodes[0] && c.to === selectedNodes[1]) ||
-                    (c.from === selectedNodes[1] && c.to === selectedNodes[0])
+                    (c.from === fromNode && c.to === toNode) ||
+                    (c.from === toNode && c.to === fromNode)
                 );
 
                 if (!exists) {
-                    connections.push({ from: selectedNodes[0], to: selectedNodes[1] });
-                    triggerConnectionGridEffects(selectedNodes[0], selectedNodes[1]);
+                    connections.push({ from: fromNode, to: toNode });
+                    playLinkEffect(fromNode, toNode, "link");
+                    triggerConnectionGridEffects(fromNode, toNode);
                 }
                 pendingMobileLinkAction = null;
                 clearSelection();
@@ -1440,23 +1442,31 @@ connections: connections.map(c => ({
 
 
         function unlinkSelectedNodes() {
-    if (selectedNodes.length === 2) {
-        connections = connections.filter(c =>
-            !(
-                (c.from === selectedNodes[0] && c.to === selectedNodes[1]) ||
-                (c.from === selectedNodes[1] && c.to === selectedNodes[0])
-            )
-        );
-        pendingMobileLinkAction = null;
-        clearSelection();
-        draw();
-    } else if (isMobileLinkModeAvailable()) {
-        pendingMobileLinkAction = 'unlink';
-        showActionNotice(document.getElementById('unlinkBtn'), 'Modo desligar ativado', 'Toque em dois cartões ao mesmo tempo para desligar o nó.');
-    } else {
-        showActionNotice(document.getElementById('unlinkBtn'), 'Selecione dois cartões', 'Selecione cartões usando SHIFT ou use o botão direito para desligar o nó.');
-    }
-}
+            if (selectedNodes.length === 2) {
+                const [fromNode, toNode] = selectedNodes;
+                const existed = hasConnection(fromNode, toNode);
+
+                connections = connections.filter(c =>
+                    !(
+                        (c.from === fromNode && c.to === toNode) ||
+                        (c.from === toNode && c.to === fromNode)
+                    )
+                );
+
+                if (existed) {
+                    playLinkEffect(fromNode, toNode, "unlink");
+                }
+
+                pendingMobileLinkAction = null;
+                clearSelection();
+                draw();
+            } else if (isMobileLinkModeAvailable()) {
+                pendingMobileLinkAction = 'unlink';
+                showActionNotice(document.getElementById('unlinkBtn'), 'Modo desligar ativado', 'Toque em dois cartões ao mesmo tempo para desligar o nó.');
+            } else {
+                showActionNotice(document.getElementById('unlinkBtn'), 'Selecione dois cartões', 'Selecione cartões usando SHIFT ou use o botão direito para desligar o nó.');
+            }
+        }
 
 
 function triggerConnectionGridEffects(a, b) {
