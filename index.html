@@ -49,21 +49,20 @@
         }
 
         button {
-            background: linear-gradient(180deg, #1177bb, #0e639c);
+            background: #0e639c;
             color: white;
-            border: 1px solid rgba(255,255,255,.08);
+            border: none;
             padding: 8px 12px;
             cursor: pointer;
-            border-radius: 8px;
+            border-radius: 3px;
             font-weight: bold;
             font-size: 13px;
-            transition: background 0.2s ease, transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            transition: background 0.2s;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             line-height: 1;
-            box-shadow: 0 3px 10px rgba(0,0,0,.18), 0 1px 0 rgba(255,255,255,.04) inset;
         }
 
         button .button-icon {
@@ -93,52 +92,18 @@
         button.icon-only {
             padding: 8px;
             min-width: 32px;
-            background: linear-gradient(180deg, rgba(56, 66, 74, .92), rgba(39, 45, 51, .92));
-            border-color: rgba(255,255,255,.12);
-            color: #edf7ff;
         }
 
-        button:hover {
-            background: linear-gradient(180deg, #1685d0, #1177bb);
-            border-color: rgba(121, 199, 255, .42);
-            box-shadow: 0 5px 14px rgba(0,0,0,.26), 0 0 0 3px rgba(14, 159, 234, .14);
-            transform: translateY(-1px);
-        }
+        button:hover { background: #1177bb; }
 
-        button:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 7px rgba(0,0,0,.22), 0 1px 0 rgba(255,255,255,.04) inset;
-        }
+        button.secondary { background: #3c3c3c; }
+        button.secondary:hover { background: #4c4c4c; }
 
-        button.secondary {
-            background: linear-gradient(180deg, rgba(69, 78, 86, .9), rgba(47, 54, 61, .92));
-            color: #d8e3ea;
-        }
-        button.secondary:hover {
-            background: linear-gradient(180deg, rgba(82, 93, 102, .94), rgba(57, 66, 73, .94));
-            border-color: rgba(185, 209, 225, .26);
-            box-shadow: 0 5px 14px rgba(0,0,0,.24), 0 0 0 3px rgba(185, 209, 225, .10);
-        }
+        button.success { background: #3c3c3c; }
+        button.success:hover { background: #4c4c4c; }
 
-        button.success {
-            background: linear-gradient(180deg, rgba(47, 125, 77, .95), rgba(37, 94, 61, .95));
-            color: #f4fff8;
-        }
-        button.success:hover {
-            background: linear-gradient(180deg, rgba(59, 145, 91, .98), rgba(44, 112, 72, .98));
-            border-color: rgba(124, 214, 154, .34);
-            box-shadow: 0 5px 14px rgba(0,0,0,.25), 0 0 0 3px rgba(92, 184, 123, .13);
-        }
-
-        button.warning {
-            background: linear-gradient(180deg, rgba(145, 93, 42, .96), rgba(107, 68, 36, .96));
-            color: #fff7ed;
-        }
-        button.warning:hover {
-            background: linear-gradient(180deg, rgba(168, 108, 48, .98), rgba(128, 80, 39, .98));
-            border-color: rgba(255, 190, 113, .34);
-            box-shadow: 0 5px 14px rgba(0,0,0,.25), 0 0 0 3px rgba(255, 172, 86, .12);
-        }
+        button.warning { background: #3c3c3c; color: #fff; }
+        button.warning:hover { background: #4c4c4c; }
 
         /* Separador visual na toolbar */
         .separator {
