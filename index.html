@@ -358,7 +358,10 @@
     .intro-wordmark,
     .intro-bracket,
     .intro-word,
-    .intro-tilde {
+    .intro-tilde,
+    .menu-modal,
+    .menu-modal__inner,
+    .card-launch-ghost {
         animation: none !important;
         transition: none !important;
     }
@@ -406,6 +409,181 @@ body:not(.ui-ready) #code-panel {
     pointer-events: auto;
 }
 
+
+.menu-modal {
+    position: absolute;
+    top: 55px;
+    left: 10px;
+    width: min(320px, calc(100vw - 20px));
+    background: linear-gradient(180deg, rgba(42, 42, 44, 0.98), rgba(31, 31, 33, 0.98));
+    border: 1px solid rgba(120, 180, 220, 0.22);
+    border-radius: 10px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03) inset;
+    z-index: 120;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top left;
+    overflow: hidden;
+    transition: opacity 220ms ease, transform 260ms cubic-bezier(.2,.8,.2,1), visibility 220ms ease;
+}
+
+.menu-modal.is-open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.menu-modal__inner {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition: max-height 360ms cubic-bezier(.2,.8,.2,1), opacity 240ms ease 80ms, transform 260ms ease 60ms;
+}
+
+.menu-modal.is-open .menu-modal__inner {
+    max-height: 360px;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.menu-modal__eyebrow {
+    color: #79c7ff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+
+.menu-modal__title {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.menu-modal__text {
+    color: #c7d3dc;
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 0;
+}
+
+.menu-modal__field {
+    display: grid;
+    gap: 7px;
+}
+
+.menu-modal__field span {
+    color: #aeb8bf;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.menu-modal__input {
+    background: #1e1e1e;
+    color: #f5f8fa;
+    border: 1px solid #3b5566;
+    border-radius: 7px;
+    padding: 10px 11px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.menu-modal__input:focus {
+    border-color: #0e9fea;
+    box-shadow: 0 0 0 3px rgba(14, 159, 234, .16);
+}
+
+.menu-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.menu-modal__actions button {
+    border-radius: 7px;
+}
+
+.menu-modal__notice {
+    border-left: 3px solid #0e9fea;
+    background: rgba(14, 99, 156, .12);
+    border-radius: 8px;
+    padding: 11px 12px;
+}
+
+.menu-modal__notice .menu-modal__title {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.card-launch-ghost {
+    position: fixed;
+    z-index: 140;
+    width: 220px;
+    height: 120px;
+    background: #2d2d30;
+    border: 2px solid #007acc;
+    box-shadow: 0 16px 35px rgba(0,0,0,.38), 0 0 24px rgba(0,122,204,.18);
+    color: #fff;
+    pointer-events: none;
+    overflow: hidden;
+    animation: launchCardToCanvas 520ms cubic-bezier(.2,.82,.24,1) forwards;
+}
+
+.card-launch-ghost::before {
+    content: '';
+    display: block;
+    height: 25px;
+    background: rgba(255,255,255,0.05);
+}
+
+.card-launch-ghost__label {
+    position: absolute;
+    top: 7px;
+    left: 10px;
+    right: 10px;
+    font: bold 13px 'Segoe UI', Tahoma, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-launch-ghost__description {
+    position: absolute;
+    top: 42px;
+    left: 10px;
+    right: 10px;
+    color: #aaa;
+    font: 11px 'Segoe UI', Tahoma, sans-serif;
+}
+
+@keyframes launchCardToCanvas {
+    0% {
+        left: var(--ghost-start-x);
+        top: var(--ghost-start-y);
+        transform: scale(.82);
+        opacity: .96;
+        border-radius: 10px;
+    }
+    65% {
+        opacity: 1;
+    }
+    100% {
+        left: var(--ghost-end-x);
+        top: var(--ghost-end-y);
+        transform: scale(1);
+        opacity: 0;
+        border-radius: 0;
+    }
+}
+
 #code-panel,
 #devlog-panel,
 #novelo-panel {
@@ -438,7 +616,8 @@ body:not(.ui-ready) #code-panel {
         display: none;
     }
 
-    #openMenu {
+    #openMenu,
+    .menu-modal {
         top: auto !important;
         left: 10px !important;
         right: 10px !important;
@@ -484,9 +663,9 @@ body:not(.ui-ready) #code-panel {
     </div>
 
     <div id="toolbar">
-        <button onclick="addNode()">+ NOVO CARTÃO</button>
-        <button class="secondary" onclick="connectNodes()">LIGAR</button>
-        <button class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
+        <button id="addNodeBtn" onclick="addNode()">+ NOVO CARTÃO</button>
+        <button id="connectBtn" class="secondary" onclick="connectNodes()">LIGAR</button>
+        <button id="unlinkBtn" class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
 
 
         <div class="separator"></div>
@@ -502,6 +681,9 @@ body:not(.ui-ready) #code-panel {
   <button id="openFromGithubBtn" class="secondary" onclick="openFromGithub()"></button>
   <button id="openProjetoNodoBtn" class="secondary" onclick="openProjetoNodo()"></button>
 </div>
+
+        <!-- MENU CONTEXTUAL PARA AÇÕES SEM ALERTAS DO NAVEGADOR -->
+        <div id="actionMenu" class="menu-modal" aria-live="polite" aria-hidden="true"></div>
 
 
 
@@ -1106,14 +1288,128 @@ connections: connections.map(c => ({
         // --- GERENCIAMENTO DE NÓS ---
 
         function addNode() {
-            const name = prompt("Nome do novo cartão", "NewSystem");
-            if (name) {
-                // Posiciona levemente deslocado para não ficar um em cima do outro
-                const offset = nodes.length * 20;
-                const node = new Node(100 + offset, 100 + offset, name);
-                nodes.push(node);
-                draw();
-            }
+            showNewCardMenu();
+        }
+
+        function getActionMenu() {
+            return document.getElementById('actionMenu');
+        }
+
+        function positionActionMenu(anchor) {
+            const menu = getActionMenu();
+            if (!menu || !anchor) return;
+            const rect = anchor.getBoundingClientRect();
+            const viewportPadding = 10;
+            const preferredLeft = rect.left;
+            const maxLeft = window.innerWidth - Math.min(320, window.innerWidth - 20) - viewportPadding;
+            menu.style.top = `${rect.bottom + 8}px`;
+            menu.style.left = `${Math.max(viewportPadding, Math.min(preferredLeft, maxLeft))}px`;
+        }
+
+        function hideActionMenu() {
+            const menu = getActionMenu();
+            if (!menu) return;
+            menu.classList.remove('is-open');
+            menu.setAttribute('aria-hidden', 'true');
+        }
+
+        function showActionMenu(anchor, html, afterRender) {
+            const menu = getActionMenu();
+            if (!menu) return;
+            hideOpenMenu();
+            positionActionMenu(anchor);
+            menu.innerHTML = html;
+            menu.setAttribute('aria-hidden', 'false');
+            window.requestAnimationFrame(() => menu.classList.add('is-open'));
+            if (typeof afterRender === 'function') afterRender(menu);
+        }
+
+        function showNewCardMenu() {
+            const anchor = document.getElementById('addNodeBtn');
+            showActionMenu(anchor, `
+                <form class="menu-modal__inner" id="newCardForm">
+                    <div class="menu-modal__eyebrow">Novo cartão</div>
+                    <h3 class="menu-modal__title">Dê um nome ao cartão</h3>
+                    <p class="menu-modal__text">O cartão será criado no mapa com uma transição suave, pronto para edição.</p>
+                    <label class="menu-modal__field">
+                        <span>Nome do cartão</span>
+                        <input class="menu-modal__input" id="newCardName" type="text" value="NewSystem" autocomplete="off" maxlength="48">
+                    </label>
+                    <div class="menu-modal__actions">
+                        <button type="button" class="secondary" id="cancelNewCardBtn">Cancelar</button>
+                        <button type="submit">Criar cartão</button>
+                    </div>
+                </form>
+            `, menu => {
+                const input = menu.querySelector('#newCardName');
+                const form = menu.querySelector('#newCardForm');
+                const cancel = menu.querySelector('#cancelNewCardBtn');
+
+                cancel.addEventListener('click', hideActionMenu);
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+                    const name = input.value.trim();
+                    if (!name) {
+                        input.focus();
+                        return;
+                    }
+
+                    const offset = nodes.length * 20;
+                    const node = new Node(100 + offset, 100 + offset, name);
+                    animateNewCardFromMenu(node, menu);
+                    hideActionMenu();
+                    window.setTimeout(() => {
+                        nodes.push(node);
+                        draw();
+                    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 430);
+                });
+
+                window.setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 90);
+            });
+        }
+
+        function animateNewCardFromMenu(node, menu) {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+            const rect = menu.getBoundingClientRect();
+            const ghost = document.createElement('div');
+            ghost.className = 'card-launch-ghost';
+            ghost.style.setProperty('--ghost-start-x', `${rect.left + 14}px`);
+            ghost.style.setProperty('--ghost-start-y', `${rect.top + 14}px`);
+            ghost.style.setProperty('--ghost-end-x', `${node.x}px`);
+            ghost.style.setProperty('--ghost-end-y', `${node.y}px`);
+
+            const label = document.createElement('div');
+            label.className = 'card-launch-ghost__label';
+            label.textContent = `${node.label}.${node.type}`;
+
+            const description = document.createElement('div');
+            description.className = 'card-launch-ghost__description';
+            description.textContent = node.description || 'Sem descrição';
+
+            ghost.append(label, description);
+            document.body.appendChild(ghost);
+            ghost.addEventListener('animationend', () => ghost.remove(), { once: true });
+        }
+
+        function showActionNotice(anchor, title, message) {
+            showActionMenu(anchor, `
+                <div class="menu-modal__inner">
+                    <div class="menu-modal__eyebrow">Notificação</div>
+                    <div class="menu-modal__notice">
+                        <h3 class="menu-modal__title">${title}</h3>
+                        <p class="menu-modal__text">${message}</p>
+                    </div>
+                    <div class="menu-modal__actions">
+                        <button type="button" id="closeActionNoticeBtn">Entendi</button>
+                    </div>
+                </div>
+            `, menu => {
+                menu.querySelector('#closeActionNoticeBtn').addEventListener('click', hideActionMenu);
+            });
         }
 
         function isMobileLinkModeAvailable() {
@@ -1136,9 +1432,9 @@ connections: connections.map(c => ({
                 draw();
             } else if (isMobileLinkModeAvailable()) {
                 pendingMobileLinkAction = 'connect';
-                alert("Toque em dois cartões ao mesmo tempo para fazer a ligação do nó");
+                showActionNotice(document.getElementById('connectBtn'), 'Modo ligação ativado', 'Toque em dois cartões ao mesmo tempo para fazer a ligação do nó.');
             } else {
-                alert("Selecione cartões usando SHIFT ou use o botão direito para fazer a ligação do nó.");
+                showActionNotice(document.getElementById('connectBtn'), 'Selecione dois cartões', 'Selecione cartões usando SHIFT ou use o botão direito para fazer a ligação do nó.');
             }
         }
 
@@ -1156,9 +1452,9 @@ connections: connections.map(c => ({
         draw();
     } else if (isMobileLinkModeAvailable()) {
         pendingMobileLinkAction = 'unlink';
-        alert("Toque em dois cartões ao mesmo tempo para desligar o nó");
+        showActionNotice(document.getElementById('unlinkBtn'), 'Modo desligar ativado', 'Toque em dois cartões ao mesmo tempo para desligar o nó.');
     } else {
-        alert("Selecione cartões usando SHIFT ou use o botão direito para desligar o nó");
+        showActionNotice(document.getElementById('unlinkBtn'), 'Selecione dois cartões', 'Selecione cartões usando SHIFT ou use o botão direito para desligar o nó.');
     }
 }
 
@@ -1897,6 +2193,7 @@ function hideOpenMenu() {
 }
 
 function showOpenMenu() {
+  hideActionMenu();
   const rect = openBtn.getBoundingClientRect();
   openMenu.style.top = rect.bottom + 5 + "px";
   openMenu.style.left = rect.left + "px";
@@ -1915,6 +2212,7 @@ function resetInteractiveUI() {
   document.getElementById('description-editor').value = '';
   document.getElementById('file-type').value = 'js';
   hideOpenMenu();
+  hideActionMenu();
   activeNode = null;
 }
 
@@ -1928,8 +2226,21 @@ openBtn.onclick = () => {
 };
 
 document.addEventListener("click", e => {
+  const actionMenu = getActionMenu();
+  const addNodeBtn = document.getElementById('addNodeBtn');
+  const connectBtn = document.getElementById('connectBtn');
+  const unlinkBtn = document.getElementById('unlinkBtn');
+
   if (!openBtn.contains(e.target) && !openMenu.contains(e.target)) {
     hideOpenMenu();
+  }
+
+  if (actionMenu
+      && !actionMenu.contains(e.target)
+      && !addNodeBtn.contains(e.target)
+      && !connectBtn.contains(e.target)
+      && !unlinkBtn.contains(e.target)) {
+    hideActionMenu();
   }
 });
 
