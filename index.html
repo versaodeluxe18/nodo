@@ -2673,13 +2673,13 @@ async function openFromGithub() {
   const NODO_JSON_URL = "https://raw.githubusercontent.com/versaodeluxe18/nodo/main/examples/save-nodo.json";
 
   try {
-    const text = await fetchProjectTextWithPreloader(NODO_JSON_URL, "Abrindo Projeto Nó-do...");
-    FilePreloader.setProgress(88, "Montando Projeto Nó-do...");
+    const text = await fetchProjectTextWithPreloader(NODO_JSON_URL, "ABRINDO PROJETO");
+    FilePreloader.setProgress(88, "MONTANDO PROJETO");
     await waitForPreloaderFrame();
     const data = JSON.parse(text);
     await waitForPreloaderFrame();
     loadProjectData(data);
-    await FilePreloader.finish("Projeto Nó-do carregado");
+    await FilePreloader.finish("TUDO CERTO");
 
   } catch (err) {
     FilePreloader.fail("Erro ao carregar Projeto Nó-do");
