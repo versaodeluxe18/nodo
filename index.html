@@ -663,7 +663,7 @@ body:not(.ui-ready) #code-panel {
     </div>
 
     <div id="toolbar">
-        <button id="addNodeBtn" onclick="addNode()" aria-label="Novo cartão">+ Cartão</button>
+        <button id="addNodeBtn" onclick="addNode()" aria-label="Novo cartão">+ CARTÃO</button>
         <button id="connectBtn" class="secondary" onclick="connectNodes()">LIGAR</button>
         <button id="unlinkBtn" class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
 
@@ -1328,7 +1328,7 @@ connections: connections.map(c => ({
             const anchor = document.getElementById('addNodeBtn');
             showActionMenu(anchor, `
                 <form class="menu-modal__inner" id="newCardForm">
-                    <h3 class="menu-modal__title">Novo cartão</h3>
+                    <h3 class="menu-modal__title">Adicionar novo cartão</h3>
                     <label class="menu-modal__field">
                         <span>Nome</span>
                         <input class="menu-modal__input" id="newCardName" type="text" placeholder="Nome" aria-label="Nome do cartão" autocomplete="off" maxlength="48">
@@ -1396,13 +1396,13 @@ connections: connections.map(c => ({
         function showActionNotice(anchor, title, message) {
             showActionMenu(anchor, `
                 <div class="menu-modal__inner">
-                    <div class="menu-modal__eyebrow">Notificação</div>
+                    <div class="menu-modal__eyebrow">INSTRUÇÃO</div>
                     <div class="menu-modal__notice">
                         <h3 class="menu-modal__title">${title}</h3>
                         <p class="menu-modal__text">${message}</p>
                     </div>
                     <div class="menu-modal__actions">
-                        <button type="button" id="closeActionNoticeBtn">Entendi</button>
+                        <button type="button" id="closeActionNoticeBtn">OK</button>
                     </div>
                 </div>
             `, menu => {
