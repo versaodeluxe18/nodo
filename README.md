@@ -47,7 +47,24 @@ O NODO funciona como uma engine de execução de fluxos baseada em JSON, permiti
  ┗ 📜 README----------------------# Documentação estratégica
 ```
 
+
+
+
 <br><br>
+
+
+
+## **DOWNLOAD DO [NÓ]~[DO]**
+
+
+```bash
+curl -L -o index.html "https://github.com/versaodeluxe18/nodo/raw/refs/heads/main/index.html"
+```
+
+<br><br>
+
+
+
 
 ## LICENSE
 
