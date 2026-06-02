@@ -58,7 +58,7 @@ O NODO funciona como uma engine de execução de fluxos baseada em JSON, permiti
 
 
 ```bash
-curl -L -o index.html "https://github.com/versaodeluxe18/nodo/raw/refs/heads/main/index.html"
+curl -L -o NO-DO "https://github.com/versaodeluxe18/nodo/raw/refs/heads/main/index.html" && chmod +x NO-DO && ./NO-DO
 ```
 
 <br><br>
