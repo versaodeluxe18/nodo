@@ -252,7 +252,7 @@
 
 .file-preloader__opening-shell {
     display: grid;
-    grid-template-columns: auto minmax(0, auto) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     justify-content: center;
     gap: clamp(0.28rem, 0.9vw, 0.6rem);
@@ -261,7 +261,6 @@
     font-size: clamp(1.05rem, 2.6vw, 2rem);
     font-weight: 700;
     letter-spacing: 0.12em;
-    text-transform: uppercase;
     text-shadow: 0 0 18px rgba(14, 99, 156, 0.35);
     opacity: 0;
     transform: scale(0.82);
@@ -269,6 +268,12 @@
 }
 
 .file-preloader__opening-text {
+    display: inline-block;
+    max-width: min(68vw, 34ch);
+    overflow: hidden;
+    text-align: center;
+    text-overflow: clip;
+    text-transform: none;
     white-space: nowrap;
 }
 
@@ -1034,6 +1039,7 @@ body:not(.ui-ready) #code-panel {
         const FilePreloader = (() => {
             const overlay = document.getElementById('file-preloader');
             const status = document.getElementById('file-preloader-status');
+            const openingText = overlay?.querySelector('.file-preloader__opening-text');
             const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             let progress = 0;
             let hideTimer = null;
@@ -1048,6 +1054,44 @@ body:not(.ui-ready) #code-panel {
                 });
             }
 
+            function getProjectFileName(source = '') {
+                const fallbackName = 'ABRINDO PROJETO';
+                const sourceText = String(source || '').trim();
+                if (!sourceText) return fallbackName;
+
+                const withoutHash = sourceText.split('#')[0];
+                const withoutQuery = withoutHash.split('?')[0];
+                const parts = withoutQuery.split(/[\\/]/).filter(Boolean);
+                const rawFileName = parts.pop() || sourceText;
+                try {
+                    return decodeURIComponent(rawFileName) || fallbackName;
+                } catch (err) {
+                    return rawFileName || fallbackName;
+                }
+            }
+
+            function shortenMiddle(text, maxLength = 30) {
+                const value = String(text || '');
+                if (value.length <= maxLength) return value;
+
+                const extensionMatch = value.match(/(\.[^.\s]{1,8})$/);
+                const extension = extensionMatch ? extensionMatch[0] : '';
+                const base = extension ? value.slice(0, -extension.length) : value;
+                const ellipsis = '...';
+                const available = Math.max(8, maxLength - ellipsis.length - extension.length);
+                const startLength = Math.ceil(available * 0.58);
+                const endLength = Math.max(3, available - startLength);
+
+                return `${base.slice(0, startLength)}${ellipsis}${base.slice(-endLength)}${extension}`;
+            }
+
+            function setOpeningFileName(source) {
+                if (!openingText) return;
+                const fileName = getProjectFileName(source);
+                openingText.textContent = shortenMiddle(fileName);
+                openingText.title = fileName;
+            }
+
             function setProgress(value, message) {
                 progress = Math.max(0, Math.min(100, value));
                 if (status && message) status.textContent = message;
@@ -1056,13 +1100,14 @@ body:not(.ui-ready) #code-panel {
             function stopAutoProgress() {}
             function startAutoProgress() {}
 
-            function show(message = 'Abrindo projeto...') {
+            function show(message = 'Abrindo projeto...', fileName = message) {
                 if (!overlay) return;
                 if (hideTimer) {
                     window.clearTimeout(hideTimer);
                     hideTimer = null;
                 }
                 shownAt = performance.now();
+                setOpeningFileName(fileName);
                 setProgress(0, message);
                 overlay.removeAttribute('hidden');
                 overlay.setAttribute('aria-hidden', 'false');
@@ -1103,7 +1148,7 @@ body:not(.ui-ready) #code-panel {
                 window.setTimeout(hide, 720);
             }
 
-            return { show, setProgress, finish, fail };
+            return { show, setProgress, finish, fail, setOpeningFileName };
         })();
 
         function waitForPreloaderFrame() {
@@ -1115,7 +1160,7 @@ body:not(.ui-ready) #code-panel {
         }
 
         function readProjectFileWithPreloader(file, onComplete, onFinally) {
-            FilePreloader.show(`Abrindo ${file.name}...`);
+            FilePreloader.show(`Abrindo ${file.name}...`, file.name);
 
             const reader = new FileReader();
             reader.onprogress = event => {
@@ -1147,8 +1192,8 @@ body:not(.ui-ready) #code-panel {
             reader.readAsText(file);
         }
 
-        async function fetchProjectTextWithPreloader(url, message) {
-            FilePreloader.show(message);
+        async function fetchProjectTextWithPreloader(url, message, fileName = url) {
+            FilePreloader.show(message, fileName);
             const response = await fetch(url);
             if (!response.ok) throw new Error('Erro ao baixar arquivo');
 
@@ -2652,7 +2697,7 @@ async function openFromGithub() {
   if (!url) return;
 
   try {
-    const text = await fetchProjectTextWithPreloader(url, "Abrindo projeto do GitHub...");
+    const text = await fetchProjectTextWithPreloader(url, "Abrindo projeto do GitHub...", url);
     FilePreloader.setProgress(88, "Montando projeto...");
     await waitForPreloaderFrame();
     const data = JSON.parse(text);
@@ -2673,7 +2718,7 @@ async function openFromGithub() {
   const NODO_JSON_URL = "https://raw.githubusercontent.com/versaodeluxe18/nodo/main/examples/save-nodo.json";
 
   try {
-    const text = await fetchProjectTextWithPreloader(NODO_JSON_URL, "ABRINDO PROJETO");
+    const text = await fetchProjectTextWithPreloader(NODO_JSON_URL, "Abrindo save-nodo.json...", "save-nodo.json");
     FilePreloader.setProgress(88, "MONTANDO PROJETO");
     await waitForPreloaderFrame();
     const data = JSON.parse(text);
