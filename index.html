@@ -663,7 +663,7 @@ body:not(.ui-ready) #code-panel {
     </div>
 
     <div id="toolbar">
-        <button id="addNodeBtn" onclick="addNode()">+ NOVO CARTÃO</button>
+        <button id="addNodeBtn" onclick="addNode()" aria-label="Novo cartão">+ Cartão</button>
         <button id="connectBtn" class="secondary" onclick="connectNodes()">LIGAR</button>
         <button id="unlinkBtn" class="secondary" onclick="unlinkSelectedNodes()">DESLIGAR</button>
 
@@ -1328,16 +1328,14 @@ connections: connections.map(c => ({
             const anchor = document.getElementById('addNodeBtn');
             showActionMenu(anchor, `
                 <form class="menu-modal__inner" id="newCardForm">
-                    <div class="menu-modal__eyebrow">Novo cartão</div>
-                    <h3 class="menu-modal__title">Dê um nome ao cartão</h3>
-                    <p class="menu-modal__text">O cartão será criado no mapa com uma transição suave, pronto para edição.</p>
+                    <h3 class="menu-modal__title">Novo cartão</h3>
                     <label class="menu-modal__field">
-                        <span>Nome do cartão</span>
-                        <input class="menu-modal__input" id="newCardName" type="text" value="NewSystem" autocomplete="off" maxlength="48">
+                        <span>Nome</span>
+                        <input class="menu-modal__input" id="newCardName" type="text" placeholder="Nome" aria-label="Nome do cartão" autocomplete="off" maxlength="48">
                     </label>
                     <div class="menu-modal__actions">
                         <button type="button" class="secondary" id="cancelNewCardBtn">Cancelar</button>
-                        <button type="submit">Criar cartão</button>
+                        <button type="submit">Criar</button>
                     </div>
                 </form>
             `, menu => {
